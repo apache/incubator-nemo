@@ -38,6 +38,12 @@ public interface InputReader {
    */
   List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read();
 
+   /** Reads input data depending on the communication pattern of the srcVertex.
+   *
+     * @return the list of iterators.
+    */
+  List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read(boolean enableWorkStealing, int maxSplitNum);
+
   /**
    * Retry reading input data.
    *

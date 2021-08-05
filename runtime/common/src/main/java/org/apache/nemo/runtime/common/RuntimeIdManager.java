@@ -113,6 +113,15 @@ public final class RuntimeIdManager {
     return runtimeEdgeId + SPLITTER + producerTaskIndex + SPLITTER + "*";
   }
 
+  public static String generateWorkStealingBlockId(final String runtimeEdgeId,
+                                                   final String producerTaskId,
+                                                   final String consumerTaskId) {
+    return runtimeEdgeId + SPLITTER + getIndexFromTaskId(producerTaskId)
+      + SPLITTER + getAttemptFromTaskId(producerTaskId)
+      + SPLITTER + getIndexFromTaskId(consumerTaskId)
+      + SPLITTER + getAttemptFromTaskId(consumerTaskId);
+  }
+
   /**
    * Generates the ID for a control message.
    *

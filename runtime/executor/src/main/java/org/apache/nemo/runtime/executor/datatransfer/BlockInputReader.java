@@ -90,6 +90,29 @@ public final class BlockInputReader implements InputReader {
     }
   }
 
+  public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read(final boolean enableWorkStealing,
+                                                                     final int maxSplitNum) {
+    if (!enableWorkStealing) {
+      return read();
+    }
+
+    // change here
+    final Optional<CommunicationPatternProperty.Value> comValueOptional =
+      runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
+    final CommunicationPatternProperty.Value comValue = comValueOptional.orElseThrow(IllegalStateException::new);
+
+    switch (comValue) {
+      case ONE_TO_ONE:
+        return Collections.singletonList(readOneToOne());
+      case BROADCAST:
+        return readBroadcast(index -> true);
+      case SHUFFLE:
+        return readDataInRange(index -> true);
+      default:
+        throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
+    }
+  }
+
   @Override
   public CompletableFuture<DataUtil.IteratorWithNumBytes> retry(final int desiredIndex) {
     final Optional<CommunicationPatternProperty.Value> comValueOptional =
@@ -189,7 +212,6 @@ public final class BlockInputReader implements InputReader {
           blockIdWildcard, runtimeEdge.getId(), runtimeEdge.getExecutionProperties(), hashRangeToRead));
       }
     }
-
     return futures;
   }
 }
