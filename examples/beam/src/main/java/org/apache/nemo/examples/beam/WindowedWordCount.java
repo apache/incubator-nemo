@@ -29,11 +29,15 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A Windowed WordCount application.
  */
 public final class WindowedWordCount {
+  private static final Logger LOG = LoggerFactory.getLogger(WindowedWordCount.class.getName());
+
   /**
    * Private Constructor.
    */
@@ -42,7 +46,8 @@ public final class WindowedWordCount {
 
   public static final String INPUT_TYPE_BOUNDED = "bounded";
   public static final String INPUT_TYPE_UNBOUNDED = "unbounded";
-  private static final String SPLITTER = "!";
+  private static final String SPLITTER = " ";
+  private static long ITERATION = 1;
 
 
   /**
@@ -62,8 +67,7 @@ public final class WindowedWordCount {
           @ProcessElement
           public void processElement(@Element final String elem,
                                      final OutputReceiver<String> out) {
-            final String[] splitt = elem.split(SPLITTER);
-            out.outputWithTimestamp(splitt[0], new Instant(Long.valueOf(splitt[1])));
+            out.outputWithTimestamp(elem, Instant.ofEpochMilli(System.currentTimeMillis()));
           }
         }))
         .apply(MapElements.<String, KV<String, Long>>via(new SimpleFunction<String, KV<String, Long>>() {
@@ -100,6 +104,8 @@ public final class WindowedWordCount {
   public static void main(final String[] args) {
     final String outputFilePath = args[0];
     final String windowType = args[1];
+    ITERATION = Long.parseLong(args[4]);
+
 
     final Window<KV<String, Long>> windowFn;
     if (windowType.equals("fixed")) {
@@ -120,7 +126,30 @@ public final class WindowedWordCount {
       .apply(MapElements.<KV<String, Long>, String>via(new SimpleFunction<KV<String, Long>, String>() {
         @Override
         public String apply(final KV<String, Long> kv) {
-          return kv.getKey() + ": " + kv.getValue();
+          return kv.getKey() + SPLITTER + kv.getValue();
+        }
+      }))
+      .apply(MapElements.<String, KV<String, Long>>via(new SimpleFunction<String, KV<String, Long>>() {
+        @Override
+        public KV<String, Long> apply(final String elem) {
+          try {
+            final String[] words = elem.split(SPLITTER);
+            return KV.of(words[0], Long.parseLong(words[1]));
+          } catch (Exception e) {
+            LOG.info(elem);
+            throw e;
+          }
+        }
+      }))
+      .apply(Sum.longsPerKey())
+      .apply(MapElements.<KV<String, Long>, String>via(new SimpleFunction<KV<String, Long>, String>() {
+        @Override
+        public String apply(final KV<String, Long> kv) {
+          String result = "";
+          for (int i=0;i<ITERATION;i++){
+            result = kv.getKey() + ": " + kv.getValue();
+          }
+          return result;
         }
       }))
       .apply(new WriteOneFilePerWindow(outputFilePath, 1));
