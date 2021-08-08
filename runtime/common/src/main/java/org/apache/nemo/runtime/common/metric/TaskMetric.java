@@ -20,7 +20,6 @@ package org.apache.nemo.runtime.common.metric;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.runtime.common.state.TaskState;
-import org.apache.reef.io.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +36,7 @@ public class TaskMetric implements StateMetric<TaskState.State> {
   private String containerId = "";
   private int scheduleAttempt = -1;
   private List<StateTransitionEvent<TaskState.State>> stateTransitionEvents = new ArrayList<>();
-  private Map<String, List<StreamMetric>> streamMetric = new HashMap<>();
+  private final List<StreamMetric> streamMetrics = new ArrayList<>();
   private Map<String, List<DelayMetric>> delay = new HashMap<>();
   private long taskDuration = -1;
   private long taskCPUTime = -1;
@@ -114,15 +113,12 @@ public class TaskMetric implements StateMetric<TaskState.State> {
   /**
    * Method related to stream metric.
    */
-  public final Map<String, List<StreamMetric>> getStreamMetric() {
-    return this.streamMetric;
+  public final List<StreamMetric> getStreamMetric() {
+    return this.streamMetrics;
   }
 
-  private void setStreamMetric(final List<StreamMetric> streamMetrics) {
-    for (StreamMetric streamMetric : streamMetrics) {
-      this.streamMetric.putIfAbsent(streamMetric.getId(), new ArrayList<>());
-      this.streamMetric.get(streamMetric.getId()).add(streamMetric);
-    }
+  private void setStreamMetric(final StreamMetric streamMetric) {
+    streamMetrics.add(streamMetric);
   }
 
   /**
