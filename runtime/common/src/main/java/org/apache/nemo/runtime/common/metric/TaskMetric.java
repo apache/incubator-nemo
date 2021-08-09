@@ -20,7 +20,6 @@ package org.apache.nemo.runtime.common.metric;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.runtime.common.state.TaskState;
-import org.apache.reef.io.Tuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +36,7 @@ public class TaskMetric implements StateMetric<TaskState.State> {
   private String containerId = "";
   private int scheduleAttempt = -1;
   private List<StateTransitionEvent<TaskState.State>> stateTransitionEvents = new ArrayList<>();
-  private Map<String, List<StreamMetric>> streamMetric = new HashMap<>();
+  private final Map<String, List<StreamMetric>> streamMetricMap = new HashMap<>();
   private Map<String, List<DelayMetric>> delay = new HashMap<>();
   private long taskDuration = -1;
   private long taskCPUTime = -1;
@@ -115,13 +114,14 @@ public class TaskMetric implements StateMetric<TaskState.State> {
    * Method related to stream metric.
    */
   public final Map<String, List<StreamMetric>> getStreamMetric() {
-    return this.streamMetric;
+    return this.streamMetricMap;
   }
 
-  private void setStreamMetric(final List<StreamMetric> streamMetrics) {
-    for (StreamMetric streamMetric : streamMetrics) {
-      this.streamMetric.putIfAbsent(streamMetric.getId(), new ArrayList<>());
-      this.streamMetric.get(streamMetric.getId()).add(streamMetric);
+  private void setStreamMetric(final Map<String, StreamMetric> streamMetricMap) {
+    for (String sourceVertexId : streamMetricMap.keySet()) {
+      StreamMetric streamMetric = streamMetricMap.get(sourceVertexId);
+      this.streamMetricMap.putIfAbsent(sourceVertexId, new ArrayList<>());
+      this.streamMetricMap.get(sourceVertexId).add(streamMetric);
     }
   }
 

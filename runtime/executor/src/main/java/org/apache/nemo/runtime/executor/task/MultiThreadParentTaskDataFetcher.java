@@ -29,6 +29,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.CompletableFuture;
@@ -56,7 +58,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
   private boolean firstFetch = true;
 
   private final ConcurrentLinkedQueue elementQueue;
-
+  private final List<DataUtil.IteratorWithNumBytes> iterators;
   private long serBytes = 0;
   private long encodedBytes = 0;
 
@@ -74,6 +76,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     this.readersForParentTask = readerForParentTask;
     this.firstFetch = true;
     this.elementQueue = new ConcurrentLinkedQueue();
+    this.iterators = new ArrayList<>();
     this.queueInsertionThreads = Executors.newCachedThreadPool();
   }
 
@@ -114,6 +117,8 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
       // A thread for each iterator
       queueInsertionThreads.submit(() -> {
         if (exception == null) {
+          iterators.add(iterator);
+
           // Consume this iterator to the end.
           while (iterator.hasNext()) { // blocked on the iterator.
             final Object element = iterator.next();
@@ -133,6 +138,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
           }
           // This iterator is finished.
           countBytesSynchronized(iterator);
+          iterators.remove(iterator);
           elementQueue.offer(Finishmark.getInstance());
         } else {
           LOG.error(exception.getMessage());
@@ -163,6 +169,21 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
       encodedBytes = -1;
     } catch (final IllegalStateException e) {
       LOG.error("Failed to get the number of bytes of encoded data - the data is not ready yet ", e);
+    }
+  }
+
+  public long getCurrSerBytes() {
+    try {
+      long currSerBytes = 0;
+      for (DataUtil.IteratorWithNumBytes iterator : iterators) {
+        currSerBytes += iterator.getCurrNumSerializedBytes();
+      }
+      return serBytes + currSerBytes;
+    } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+      return -1;
+    } catch (final IllegalStateException e) {
+      LOG.error("Failed to get the number of bytes of currently serialized data", e);
+      return -1;
     }
   }
 

@@ -191,6 +191,17 @@ class ParentTaskDataFetcher extends DataFetcher {
     }
   }
 
+  public long getCurrSerBytes() {
+    try {
+      return serBytes + currentIterator.getCurrNumSerializedBytes();
+    } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+      return -1;
+    } catch (final IllegalStateException e) {
+      LOG.error("Failed to get the number of bytes of currently serialized data", e);
+      return -1;
+    }
+  }
+
   @Override
   public void close() throws Exception {
 

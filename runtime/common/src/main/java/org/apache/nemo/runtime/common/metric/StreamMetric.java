@@ -18,58 +18,45 @@
  */
 package org.apache.nemo.runtime.common.metric;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.nemo.common.Pair;
-import org.apache.nemo.common.dag.DAG;
-import org.apache.nemo.common.exception.MetricException;
-import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.ir.vertex.SourceVertex;
-import org.apache.nemo.runtime.common.plan.Stage;
-import org.apache.nemo.runtime.common.plan.StageEdge;
-import org.apache.nemo.runtime.common.state.PlanState;
-
-import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Metric associated with stream. it is periodically recorded.
  */
 public class StreamMetric implements Serializable {
-  private final String id;
-  private long timestamp = -1;
-  private Counter numOfProcessedTuples;
+  private final long startTimeStamp;
+  private final long endTimeStamp;
+  private final long numOfReadTuples;
+  private final long serializedReadBytes;
+
 
   /**
    * Constructor with the designated id.
    *
-   * @param id the id.
+   * @param startTimeStamp the starting point from which metric is recorded.
+   * @param endTimeStamp the endpoint from which metric is recorded.
+   * @param numOfTuples the number of tuples processed between starting point and endpoint.
    */
-  public StreamMetric(final String id) {
-    this.id = id;
-    this.numOfProcessedTuples = new Counter();
+  public StreamMetric(long startTimeStamp, long endTimeStamp, long numOfTuples, long serializedReadBytes) {
+    this.startTimeStamp = startTimeStamp;
+    this.endTimeStamp = endTimeStamp;
+    this.numOfReadTuples = numOfTuples;
+    this.serializedReadBytes = serializedReadBytes;
   }
 
-  public String getId() {
-    return id;
+  public long getStartTimeStamp() {
+    return startTimeStamp;
   }
 
-  public long getTimestamp() {
-    return timestamp;
+  public long getEndTimeStamp() {
+    return endTimeStamp;
   }
 
-  public Counter getNumOfProcessedTuples() {
-    return numOfProcessedTuples;
+  public long getNumOfProcessedTuples() {
+    return numOfReadTuples;
   }
 
-  public void setNumOfProcessedTuples(Counter numOfTuples) {
-    this.numOfProcessedTuples = numOfTuples;
-  }
-
-  public void setTimestamp(long timestamp) {
-    this.timestamp = timestamp;
+  public long getSerializedReadBytes() {
+    return serializedReadBytes;
   }
 }

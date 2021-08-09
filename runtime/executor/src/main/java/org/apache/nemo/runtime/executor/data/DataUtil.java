@@ -106,8 +106,8 @@ public final class DataUtil {
    * @param <K>                 the key type of the partitions.
    * @param memoryPoolAssigner  the memory pool assigner for DirectByteBufferOutputStream.
    * @return the converted {@link SerializedPartition}s.
-   * @throws IOException if fail to convert.
-   * @throws MemoryAllocationException  if fail to allocate memory.
+   * @throws IOException               if fail to convert.
+   * @throws MemoryAllocationException if fail to allocate memory.
    */
   public static <K extends Serializable> Iterable<SerializedPartition<K>> convertToSerPartitions(
     final Serializer serializer,
@@ -304,6 +304,22 @@ public final class DataUtil {
       }
       return numEncodedBytes;
     }
+
+    @Override
+    public long getCurrNumSerializedBytes() {
+      if (serializedCountingStream == null) {
+        return numSerializedBytes;
+      }
+      return numSerializedBytes + serializedCountingStream.getCount();
+    }
+
+    @Override
+    public long getCurrNumEncodedBytes() {
+      if (encodedCountingStream == null) {
+        return numEncodedBytes;
+      }
+      return numEncodedBytes + encodedCountingStream.getCount();
+    }
   }
 
   /**
@@ -365,7 +381,17 @@ public final class DataUtil {
         }
 
         @Override
+        public long getCurrNumSerializedBytes() throws NumBytesNotSupportedException {
+          throw new NumBytesNotSupportedException();
+        }
+
+        @Override
         public long getNumEncodedBytes() throws NumBytesNotSupportedException {
+          throw new NumBytesNotSupportedException();
+        }
+
+        @Override
+        public long getCurrNumEncodedBytes() throws NumBytesNotSupportedException {
           throw new NumBytesNotSupportedException();
         }
 
@@ -400,8 +426,18 @@ public final class DataUtil {
         }
 
         @Override
+        public long getCurrNumSerializedBytes() throws NumBytesNotSupportedException {
+          throw new NumBytesNotSupportedException();
+        }
+
+        @Override
         public long getNumEncodedBytes() {
           return numEncodedBytes;
+        }
+
+        @Override
+        public long getCurrNumEncodedBytes() throws NumBytesNotSupportedException {
+          throw new NumBytesNotSupportedException();
         }
 
         @Override
@@ -438,6 +474,8 @@ public final class DataUtil {
      */
     long getNumSerializedBytes() throws NumBytesNotSupportedException;
 
+    long getCurrNumSerializedBytes() throws NumBytesNotSupportedException;
+
     /**
      * This method should be called after the actual data is taken out of iterator,
      * since the existence of an iterator does not guarantee that data inside it is ready.
@@ -447,5 +485,7 @@ public final class DataUtil {
      * @throws IllegalStateException         when the information is not ready
      */
     long getNumEncodedBytes() throws NumBytesNotSupportedException;
+
+    long getCurrNumEncodedBytes() throws NumBytesNotSupportedException;
   }
 }

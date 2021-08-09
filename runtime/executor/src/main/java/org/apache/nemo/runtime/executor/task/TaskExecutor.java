@@ -60,6 +60,7 @@ import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -86,7 +87,9 @@ public final class TaskExecutor {
   private long serializedReadBytes = 0;
   private long encodedReadBytes = 0;
   private long timeSinceLastExecution;
-  private final HashMap<String, StreamMetric> streamMetricMap;
+  private long timeSinceLastRecordStreamMetric;
+  private final Map<String, AtomicLong> numOfReadTupleMap;
+  private final Map<String, Long> lastSerializedReadByteMap;
   private final MetricMessageSender metricMessageSender;
 
   // Dynamic optimization
@@ -133,13 +136,15 @@ public final class TaskExecutor {
     this.dataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
 
-    this.streamMetricMap = new HashMap<>();
-    for (final DataFetcher dataFetcher : dataFetchers) {
-      String sourceVertexId = dataFetcher.getDataSource().getId();
-      this.streamMetricMap.put(sourceVertexId, new StreamMetric(sourceVertexId));
+    this.numOfReadTupleMap = new HashMap<>();
+    this.lastSerializedReadByteMap = new HashMap<>();
+    for (DataFetcher dataFetcher : dataFetchers) {
+      this.numOfReadTupleMap.put(dataFetcher.getDataSource().getId(), new AtomicLong());
+      this.lastSerializedReadByteMap.put(dataFetcher.getDataSource().getId(), 0L);
     }
 
     if (streamMetricPeriod > 0) {
+      this.timeSinceLastRecordStreamMetric = System.currentTimeMillis();
       this.periodicMetricService = Executors.newScheduledThreadPool(1);
       this.periodicMetricService.scheduleAtFixedRate(this::saveMetric, 0, streamMetricPeriod, TimeUnit.MILLISECONDS);
     }
@@ -148,15 +153,37 @@ public final class TaskExecutor {
 
   // Send stream metric to the runtime master
   private void saveMetric() {
-    List<StreamMetric> streamMetrics = streamMetricMap.values().stream().map(streamMetric -> {
-      StreamMetric copy = SerializationUtils.clone(streamMetric);
-      copy.setTimestamp(System.currentTimeMillis());
-      streamMetric.getNumOfProcessedTuples().dec(copy.getNumOfProcessedTuples().getVal());
-      return copy;
-    }).collect(Collectors.toList());
+    long currentTimestamp = System.currentTimeMillis();
+
+    Map<String, StreamMetric> streamMetricMap = new HashMap<>();
+    for (DataFetcher dataFetcher : dataFetchers) {
+      String sourceVertexId = dataFetcher.getDataSource().getId();
+
+      long serializedReadBytes = -1;
+
+      if (dataFetcher instanceof ParentTaskDataFetcher) {
+        serializedReadBytes = ((ParentTaskDataFetcher) dataFetcher).getCurrSerBytes();
+      } else if (dataFetcher instanceof MultiThreadParentTaskDataFetcher) {
+        serializedReadBytes = ((MultiThreadParentTaskDataFetcher) dataFetcher).getCurrSerBytes();
+      }
+
+      if (serializedReadBytes != -1) {
+        long lastSerializedReadBytes = lastSerializedReadByteMap.get(sourceVertexId);
+        lastSerializedReadByteMap.put(sourceVertexId, serializedReadBytes);
+        serializedReadBytes -= lastSerializedReadBytes;
+      }
+
+      long numOfTuples = this.numOfReadTupleMap.get(sourceVertexId).get();
+
+      StreamMetric streamMetric = new StreamMetric(this.timeSinceLastRecordStreamMetric, currentTimestamp, numOfTuples, serializedReadBytes);
+      streamMetricMap.put(sourceVertexId, streamMetric);
+      numOfReadTupleMap.get(sourceVertexId).addAndGet(-numOfTuples);
+    }
 
     metricMessageSender.send(TASK_METRIC_ID, taskId, "streamMetric",
-      SerializationUtils.serialize((Serializable) streamMetrics));
+      SerializationUtils.serialize((Serializable) streamMetricMap));
+
+    this.timeSinceLastRecordStreamMetric = currentTimestamp;
   }
 
   // Get all of the intra-task edges + inter-task edges
@@ -269,7 +296,7 @@ public final class TaskExecutor {
         outputCollector = new RunTimeMessageOutputCollector<Map<Object, Long>>(
           taskId, irVertex, persistentConnectionToMasterMap, this, true);
       } else if (irVertex instanceof OperatorVertex
-      && ((OperatorVertex) irVertex).getTransform() instanceof SignalTransform) {
+        && ((OperatorVertex) irVertex).getTransform() instanceof SignalTransform) {
         outputCollector = new RunTimeMessageOutputCollector<Map<String, Long>>(
           taskId, irVertex, persistentConnectionToMasterMap, this, false);
       } else {
@@ -446,8 +473,7 @@ public final class TaskExecutor {
     } else {
       // Process data element
       processElement(dataFetcher.getOutputCollector(), event);
-      StreamMetric streamMetric = streamMetricMap.get(dataFetcher.getDataSource().getId());
-      streamMetric.getNumOfProcessedTuples().inc();
+      numOfReadTupleMap.get(dataFetcher.getDataSource().getId()).incrementAndGet();
     }
   }
 
