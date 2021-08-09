@@ -115,7 +115,7 @@ public final class TaskExecutor {
                       final BroadcastManagerWorker broadcastManagerWorker,
                       final MetricMessageSender metricMessageSender,
                       final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
-                      final int streamMetricPeriod) {
+                      final int streamMetricRecordPeriod) {
     // Essential information
     this.isExecuted = false;
     this.taskId = task.getTaskId();
@@ -145,16 +145,16 @@ public final class TaskExecutor {
     }
 
     // set the interval for recording stream metric
-    if (streamMetricPeriod > 0) {
+    if (streamMetricRecordPeriod > 0) {
       this.timeSinceLastRecordStreamMetric = System.currentTimeMillis();
       this.periodicMetricService = Executors.newScheduledThreadPool(1);
-      this.periodicMetricService.scheduleAtFixedRate(this::saveMetric, 0, streamMetricPeriod, TimeUnit.MILLISECONDS);
+      this.periodicMetricService.scheduleAtFixedRate(this::saveStreamMetric, 0, streamMetricRecordPeriod, TimeUnit.MILLISECONDS);
     }
     this.timeSinceLastExecution = System.currentTimeMillis();
   }
 
   // Send stream metric to the runtime master
-  private void saveMetric() {
+  private void saveStreamMetric() {
     long currentTimestamp = System.currentTimeMillis();
 
     Map<String, StreamMetric> streamMetricMap = new HashMap<>();
