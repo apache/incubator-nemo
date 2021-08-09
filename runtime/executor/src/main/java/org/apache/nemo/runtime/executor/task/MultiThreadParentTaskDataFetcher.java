@@ -59,6 +59,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
 
   private final ConcurrentLinkedQueue elementQueue;
   private final List<DataUtil.IteratorWithNumBytes> iterators;
+
   private long serBytes = 0;
   private long encodedBytes = 0;
 

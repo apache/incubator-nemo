@@ -136,6 +136,7 @@ public final class TaskExecutor {
     this.dataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
 
+    // initialize metrics
     this.numOfReadTupleMap = new HashMap<>();
     this.lastSerializedReadByteMap = new HashMap<>();
     for (DataFetcher dataFetcher : dataFetchers) {
@@ -143,6 +144,7 @@ public final class TaskExecutor {
       this.lastSerializedReadByteMap.put(dataFetcher.getDataSource().getId(), 0L);
     }
 
+    // set the interval for recording stream metric
     if (streamMetricPeriod > 0) {
       this.timeSinceLastRecordStreamMetric = System.currentTimeMillis();
       this.periodicMetricService = Executors.newScheduledThreadPool(1);
@@ -167,6 +169,7 @@ public final class TaskExecutor {
         serializedReadBytes = ((MultiThreadParentTaskDataFetcher) dataFetcher).getCurrSerBytes();
       }
 
+      // if serializedReadBytes is -1, it means that serializedReadBytes is invalid
       if (serializedReadBytes != -1) {
         long lastSerializedReadBytes = lastSerializedReadByteMap.get(sourceVertexId);
         lastSerializedReadByteMap.put(sourceVertexId, serializedReadBytes);
@@ -473,6 +476,8 @@ public final class TaskExecutor {
     } else {
       // Process data element
       processElement(dataFetcher.getOutputCollector(), event);
+
+      // increase the number of read tuples
       numOfReadTupleMap.get(dataFetcher.getDataSource().getId()).incrementAndGet();
     }
   }

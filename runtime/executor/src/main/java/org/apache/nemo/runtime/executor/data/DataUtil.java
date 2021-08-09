@@ -474,6 +474,15 @@ public final class DataUtil {
      */
     long getNumSerializedBytes() throws NumBytesNotSupportedException;
 
+    /**
+     * This method can be called before the every actual data completely taken from iterator,
+     * When the every actual data completely taken from iterator,
+     * its return value must be same with a return value of getNumSerializedBytes()
+     *
+     * @return the number of currently read bytes in serialized form (which is, for example, encoded and compressed)
+     * @throws NumBytesNotSupportedException when the operation is not supported
+     * @throws IllegalStateException         when the information is not ready
+     */
     long getCurrNumSerializedBytes() throws NumBytesNotSupportedException;
 
     /**
@@ -486,6 +495,15 @@ public final class DataUtil {
      */
     long getNumEncodedBytes() throws NumBytesNotSupportedException;
 
+    /**
+     * This method can be called before the every actual data completely taken from iterator,
+     * When the every actual data completely taken from iterator,
+     * its return value must be same with a return value of getNumSerializedBytes()
+     *
+     * @return the number of bytes in encoded form (which is ready to be decoded)
+     * @throws NumBytesNotSupportedException when the operation is not supported
+     * @throws IllegalStateException         when the information is not ready
+     */
     long getCurrNumEncodedBytes() throws NumBytesNotSupportedException;
   }
 }

@@ -36,6 +36,8 @@ public class StreamMetric implements Serializable {
    * @param startTimeStamp the starting point from which metric is recorded.
    * @param endTimeStamp the endpoint from which metric is recorded.
    * @param numOfTuples the number of tuples processed between starting point and endpoint.
+   * @param serializedReadBytes the number of read bytes processed between starting point and endpoint.
+   *
    */
   public StreamMetric(long startTimeStamp, long endTimeStamp, long numOfTuples, long serializedReadBytes) {
     this.startTimeStamp = startTimeStamp;
@@ -44,18 +46,38 @@ public class StreamMetric implements Serializable {
     this.serializedReadBytes = serializedReadBytes;
   }
 
+  /**
+   * Get starting point of record period.
+   *
+   * @return start timestamp.
+   */
   public long getStartTimeStamp() {
     return startTimeStamp;
   }
 
+  /**
+   * Get endpoint of record period.
+   *
+   * @return end timestamp.
+   */
   public long getEndTimeStamp() {
     return endTimeStamp;
   }
 
+  /**
+   * Get the number of processed tuple
+   *
+   * @return number of tuples.
+   */
   public long getNumOfProcessedTuples() {
     return numOfReadTuples;
   }
 
+  /**
+   * Get the number of read bytes
+   *
+   * @return number of read bytes.
+   */
   public long getSerializedReadBytes() {
     return serializedReadBytes;
   }
