@@ -58,7 +58,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
   private boolean firstFetch = true;
 
   private final ConcurrentLinkedQueue elementQueue;
-  private final List<DataUtil.IteratorWithNumBytes> iterators;
+  private final ConcurrentLinkedQueue<DataUtil.IteratorWithNumBytes> iterators;
 
   private long serBytes = 0;
   private long encodedBytes = 0;
@@ -77,7 +77,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     this.readersForParentTask = readerForParentTask;
     this.firstFetch = true;
     this.elementQueue = new ConcurrentLinkedQueue();
-    this.iterators = new ArrayList<>();
+    this.iterators = new ConcurrentLinkedQueue<>();
     this.queueInsertionThreads = Executors.newCachedThreadPool();
   }
 
@@ -139,7 +139,6 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
           }
           // This iterator is finished.
           countBytesSynchronized(iterator);
-          iterators.remove(iterator);
           elementQueue.offer(Finishmark.getInstance());
         } else {
           LOG.error(exception.getMessage());
@@ -179,7 +178,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
       for (DataUtil.IteratorWithNumBytes iterator : iterators) {
         currSerBytes += iterator.getCurrNumSerializedBytes();
       }
-      return serBytes + currSerBytes;
+      return currSerBytes;
     } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
       return -1;
     } catch (final IllegalStateException e) {

@@ -426,8 +426,8 @@ public final class DataUtil {
         }
 
         @Override
-        public long getCurrNumSerializedBytes() throws NumBytesNotSupportedException {
-          throw new NumBytesNotSupportedException();
+        public long getCurrNumSerializedBytes() {
+          return numSerializedBytes;
         }
 
         @Override
@@ -436,8 +436,8 @@ public final class DataUtil {
         }
 
         @Override
-        public long getCurrNumEncodedBytes() throws NumBytesNotSupportedException {
-          throw new NumBytesNotSupportedException();
+        public long getCurrNumEncodedBytes() {
+          return numEncodedBytes;
         }
 
         @Override

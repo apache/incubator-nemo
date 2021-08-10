@@ -193,6 +193,9 @@ class ParentTaskDataFetcher extends DataFetcher {
 
   public long getCurrSerBytes() {
     try {
+      if (currentIterator == null) {
+        return serBytes;
+      }
       return serBytes + currentIterator.getCurrNumSerializedBytes();
     } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
       return -1;
