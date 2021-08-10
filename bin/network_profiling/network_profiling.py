@@ -129,3 +129,5 @@ result['timestamp'] = str(datetime.datetime.now())
 with open('result.json', 'w') as fp:
   json.dump(result, fp)
 
+# with open('../../../network_profiling/result_{}.json'.format(datetime.datetime.now()), 'w') as fp:
+#   json.dump(result, fp)
