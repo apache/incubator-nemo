@@ -63,6 +63,7 @@ MetricsData
 ml/*.out
 ml/*.model
 venv/*
+*.json
 #
 # ----------------------------------------------------------------------
 # Unknown Files. Please clean up over time
