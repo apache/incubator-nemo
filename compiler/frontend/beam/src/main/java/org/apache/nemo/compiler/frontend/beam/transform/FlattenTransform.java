@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.punctuation.Latencymark;
 import org.apache.nemo.common.punctuation.Watermark;
 
 /**
@@ -50,6 +51,11 @@ public final class FlattenTransform<T> implements Transform<T, T> {
   @Override
   public void onWatermark(final Watermark watermark) {
     outputCollector.emitWatermark(watermark);
+  }
+
+  @Override
+  public void onLatencymark(final Latencymark latencymark) {
+    outputCollector.emitLatencymark(latencymark);
   }
 
   @Override

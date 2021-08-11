@@ -22,6 +22,7 @@ import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
+import org.apache.nemo.common.punctuation.Latencymark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.*;
@@ -211,6 +212,11 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     @Override
     public void emitWatermark(final Watermark watermark) {
       elementQueue.offer(watermark);
+    }
+
+    @Override
+    public void emitLatencymark(final Latencymark latencymark) {
+      throw new IllegalStateException("Should not be called");
     }
 
     @Override

@@ -28,6 +28,7 @@ import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.punctuation.Latencymark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,6 +91,13 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
   public void onWatermark(final Watermark watermark) {
     checkAndInvokeBundle();
     getOutputCollector().emitWatermark(watermark);
+    checkAndFinishBundle();
+  }
+
+  @Override
+  public void onLatencymark(final Latencymark latencymark) {
+    checkAndInvokeBundle();
+    getOutputCollector().emitLatencymark(latencymark);
     checkAndFinishBundle();
   }
 

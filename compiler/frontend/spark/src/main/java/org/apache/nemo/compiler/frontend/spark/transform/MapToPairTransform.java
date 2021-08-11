@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.frontend.spark.transform;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.punctuation.Latencymark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
@@ -62,6 +63,11 @@ public final class MapToPairTransform<T, K, V> implements Transform<T, Tuple2<K,
   @Override
   public void onWatermark(final Watermark watermark) {
     outputCollector.emitWatermark(watermark);
+  }
+
+  @Override
+  public void onLatencymark(final Latencymark latencymark) {
+    outputCollector.emitLatencymark(latencymark);
   }
 
   @Override

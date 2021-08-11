@@ -29,6 +29,7 @@ import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.punctuation.Latencymark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.SideInputElement;
 
@@ -159,6 +160,16 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     }
     checkAndFinishBundle();
   }
+
+
+  @Override
+  public void onLatencymark(final Latencymark latencymark) {
+    // TODO #298: Consider Processing DoFn PushBacks on Watermark
+    checkAndInvokeBundle();
+    getOutputCollector().emitLatencymark(latencymark);
+    checkAndFinishBundle();
+  }
+
 
   @Override
   protected void beforeClose() {

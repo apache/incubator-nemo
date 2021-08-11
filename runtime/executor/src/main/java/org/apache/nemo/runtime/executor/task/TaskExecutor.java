@@ -34,12 +34,13 @@ import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.SignalTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Finishmark;
+import org.apache.nemo.common.punctuation.Latencymark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
-import org.apache.nemo.runtime.common.metric.DelayMetric;
+import org.apache.nemo.runtime.common.metric.LatencyMetric;
 import org.apache.nemo.runtime.common.metric.StreamMetric;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
@@ -91,6 +92,7 @@ public final class TaskExecutor {
   private final Map<String, AtomicLong> numOfReadTupleMap;
   private final Map<String, Long> lastSerializedReadByteMap;
   private final MetricMessageSender metricMessageSender;
+  private long latencyMarkSendPeriod = -1;
 
   // Dynamic optimization
   private String idOfVertexPutOnHold;
@@ -115,12 +117,14 @@ public final class TaskExecutor {
                       final BroadcastManagerWorker broadcastManagerWorker,
                       final MetricMessageSender metricMessageSender,
                       final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
-                      final int streamMetricRecordPeriod) {
+                      final int streamMetricRecordPeriod,
+                      final int latencyMarkPeriod) {
     // Essential information
     this.isExecuted = false;
     this.taskId = task.getTaskId();
     this.taskStateManager = taskStateManager;
     this.broadcastManagerWorker = broadcastManagerWorker;
+    this.latencyMarkSendPeriod = latencyMarkPeriod;
 
     // Metric sender
     this.metricMessageSender = metricMessageSender;
@@ -325,7 +329,9 @@ public final class TaskExecutor {
         dataFetcherList.add(new SourceVertexDataFetcher(
           (SourceVertex) irVertex,
           sourceReader.get(),
-          outputCollector));
+          outputCollector,
+          latencyMarkSendPeriod,
+          taskId));
       }
 
       // Parent-task read
@@ -380,6 +386,11 @@ public final class TaskExecutor {
   private void processWatermark(final OutputCollector outputCollector,
                                 final Watermark watermark) {
     outputCollector.emitWatermark(watermark);
+  }
+
+  private void processLatencymark(final OutputCollector outputCollector,
+                                final Latencymark latencymark) {
+    outputCollector.emitLatencymark(latencymark);
   }
 
   /**
@@ -478,14 +489,14 @@ public final class TaskExecutor {
         serializedReadBytes += ((MultiThreadParentTaskDataFetcher) dataFetcher).getSerializedBytes();
         encodedReadBytes += ((MultiThreadParentTaskDataFetcher) dataFetcher).getEncodedBytes();
       }
+    } else if (event instanceof Latencymark) {
+      LatencyMetric metric = new LatencyMetric((Latencymark) event, System.currentTimeMillis());
+      metricMessageSender.send(TASK_METRIC_ID, taskId, "latencymark", SerializationUtils.serialize(metric));
+      ((Latencymark) event).setLastTaskId(taskId);
+      processLatencymark(dataFetcher.getOutputCollector(), (Latencymark) event);
     } else if (event instanceof Watermark) {
       // Watermark
       processWatermark(dataFetcher.getOutputCollector(), (Watermark) event);
-      long watermarkTimestamp = ((Watermark) event).getTimestamp();
-      long delay = System.currentTimeMillis() - watermarkTimestamp;
-      if (delay < 0) return;
-      DelayMetric metric = new DelayMetric(dataFetcher.getDataSource().getId(), watermarkTimestamp, delay);
-      metricMessageSender.send(TASK_METRIC_ID, taskId, "delay", SerializationUtils.serialize(metric));
     } else {
       // Process data element
       processElement(dataFetcher.getOutputCollector(), event);

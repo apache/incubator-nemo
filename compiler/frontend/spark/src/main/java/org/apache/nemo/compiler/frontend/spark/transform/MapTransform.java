@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.frontend.spark.transform;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.punctuation.Latencymark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.spark.api.java.function.Function;
 
@@ -59,6 +60,11 @@ public final class MapTransform<I, O> implements Transform<I, O> {
   @Override
   public void onWatermark(final Watermark watermark) {
     outputCollector.emitWatermark(watermark);
+  }
+
+  @Override
+  public void onLatencymark(final Latencymark latencymark) {
+    outputCollector.emitLatencymark(latencymark);
   }
 
   @Override

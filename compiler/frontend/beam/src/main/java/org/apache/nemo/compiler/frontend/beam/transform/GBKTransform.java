@@ -31,6 +31,7 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.punctuation.Latencymark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -166,6 +167,13 @@ public final class GBKTransform<K, InputT, OutputT>
     checkAndFinishBundle();
   }
 
+  @Override
+  public void onLatencymark(final Latencymark latencymark) {
+    checkAndInvokeBundle();
+    getOutputCollector().emitLatencymark(latencymark);
+    checkAndFinishBundle();
+  }
+
   /**
    * This advances the input watermark and processing time to the timestamp max value
    * in order to emit all data.
@@ -297,6 +305,12 @@ public final class GBKTransform<K, InputT, OutputT>
         timerInternals.advanceOutputWatermark(new Instant(output.getTimestamp().getMillis() + 1));
       }
       oc.emit(output);
+    }
+
+    /** Emit latencymark. */
+    @Override
+    public final void emitLatencymark(final Latencymark latencymark) {
+      oc.emitLatencymark(latencymark);
     }
 
     /** Emit watermark. */

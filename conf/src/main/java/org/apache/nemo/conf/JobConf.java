@@ -260,6 +260,15 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class StreamMetricPeriod implements Name<Integer> {
   }
 
+  /**
+   * Period how often latencymarks are sent from source vertex. the unit of period is millisecond.
+   * -1 indicates that latencymarks are not sent.
+   */
+  @NamedParameter(doc = "Period how often latencymarks are sent from source vertex. the unit of period is millisecond.",
+    short_name = "latencymark_period", default_value = "-1")
+  public final class LatencyMarkPeriod implements Name<Integer> {
+  }
+
   //////////////////////////////// Runtime Data Plane Configurations
 
   /**
@@ -347,6 +356,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public static final RequiredParameter<String> EXECUTOR_ID = new RequiredParameter<>();
   public static final RequiredParameter<String> JOB_ID = new RequiredParameter<>();
   public static final OptionalParameter<Integer> STREAM_METRIC_PERIOD = new OptionalParameter<>();
+  public static final OptionalParameter<Integer> LATENCYMARK_PERIOD = new OptionalParameter<>();
   public static final OptionalParameter<String> LOCAL_DISK_DIRECTORY = new OptionalParameter<>();
   public static final OptionalParameter<String> GLUSTER_DISK_DIRECTORY = new OptionalParameter<>();
 
@@ -356,5 +366,6 @@ public final class JobConf extends ConfigurationModuleBuilder {
     .bindNamedParameter(FileDirectory.class, LOCAL_DISK_DIRECTORY)
     .bindNamedParameter(GlusterVolumeDirectory.class, GLUSTER_DISK_DIRECTORY)
     .bindNamedParameter(StreamMetricPeriod.class, STREAM_METRIC_PERIOD)
+    .bindNamedParameter(LatencyMarkPeriod.class, LATENCYMARK_PERIOD)
     .build();
 }

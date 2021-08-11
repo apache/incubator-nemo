@@ -18,46 +18,33 @@
  */
 package org.apache.nemo.runtime.common.metric;
 
+import org.apache.nemo.common.punctuation.Latencymark;
+
 import java.io.Serializable;
 
 /**
  * Metric class for delay
  */
-public class DelayMetric implements Serializable {
-  private final String id;
-  private long elementCreatedTimestamp;
-  private long delay;
+public class LatencyMetric implements Serializable {
+  private Latencymark latencymark;
+  private long timestamp;
 
   /**
    * Constructor with the designated id, watermark timestamp and delay.
    *
-   * @param id the id.
-   * @param elementCreatedTimestamp When an element was created.
-   * @param delay the time it takes from the time when the element was created to to pass through the current task.
+   * @param latencymark the id.
+   * @param timestamp When an element was created.
    */
-  public DelayMetric(final String id, long elementCreatedTimestamp, long delay) {
-    this.id = id;
-    this.elementCreatedTimestamp = elementCreatedTimestamp;
-    this.delay = delay;
+  public LatencyMetric(Latencymark latencymark, long timestamp) {
+    this.latencymark = latencymark;
+    this.timestamp = timestamp;
   }
 
-  public String getId() {
-    return id;
+  public Latencymark getLatencymark() {
+    return latencymark;
   }
 
-  public long getElementCreatedTimestamp() {
-    return this.elementCreatedTimestamp;
-  }
-
-  public void setElementCreatedTimestamp(long watermarkTimestamp) {
-    this.elementCreatedTimestamp = watermarkTimestamp;
-  }
-
-  public long getDelay() {
-    return this.delay;
-  }
-
-  public void setDelay(long delay) {
-    this.delay = delay;
+  public long getTimestamp() {
+    return this.timestamp;
   }
 }

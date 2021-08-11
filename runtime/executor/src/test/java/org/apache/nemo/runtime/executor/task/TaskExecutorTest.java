@@ -37,6 +37,7 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.punctuation.Latencymark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
@@ -225,8 +226,9 @@ public final class TaskExecutorTest {
     final Map<String, Readable> vertexIdToReadable = new HashMap<>();
     vertexIdToReadable.put(sourceIRVertex.getId(), readable);
     final List<Watermark> emittedWatermarks = new LinkedList<>();
+    final List<Latencymark> emittedLatencymarks = new LinkedList<>();
 
-    final Transform transform = new StreamTransformNoWatermarkEmit(emittedWatermarks);
+    final Transform transform = new StreamTransformNoWatermarkEmit(emittedWatermarks, emittedLatencymarks);
     final OperatorVertex operatorVertex = new OperatorVertex(transform);
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag =
@@ -317,8 +319,9 @@ public final class TaskExecutorTest {
   @Test()
   public void testMultipleIncomingEdges() throws Exception {
     final List<Watermark> emittedWatermarks = new ArrayList<>();
+    final List<Latencymark> emittedLatencymarks = new ArrayList<>();
     final IRVertex operatorIRVertex1 = new OperatorVertex(new StreamTransform());
-    final IRVertex operatorIRVertex2 = new OperatorVertex(new StreamTransformNoWatermarkEmit(emittedWatermarks));
+    final IRVertex operatorIRVertex2 = new OperatorVertex(new StreamTransformNoWatermarkEmit(emittedWatermarks, emittedLatencymarks));
     final IRVertex operatorIRVertex3 = new OperatorVertex(new StreamTransform());
 
     final IRVertex sourceIRVertex1 = new TestUnboundedSourceVertex();
@@ -627,9 +630,11 @@ public final class TaskExecutorTest {
   private class StreamTransformNoWatermarkEmit<T> implements Transform<T, T> {
     private OutputCollector<T> outputCollector;
     private final List<Watermark> emittedWatermarks;
+    private final List<Latencymark> emittedLatencymarks;
 
-    StreamTransformNoWatermarkEmit(final List<Watermark> emittedWatermarks) {
+    StreamTransformNoWatermarkEmit(final List<Watermark> emittedWatermarks, final List<Latencymark> emittedLatencymarks) {
       this.emittedWatermarks = emittedWatermarks;
+      this.emittedLatencymarks = emittedLatencymarks;
     }
 
     @Override
@@ -640,6 +645,11 @@ public final class TaskExecutorTest {
     @Override
     public void onWatermark(Watermark watermark) {
       emittedWatermarks.add(watermark);
+    }
+
+    @Override
+    public void onLatencymark(Latencymark latencymark) {
+      emittedLatencymarks.add(latencymark);
     }
 
     @Override
@@ -765,6 +775,11 @@ public final class TaskExecutorTest {
     }
 
     @Override
+    public void onLatencymark(Latencymark latencymark) {
+      outputCollector.emitLatencymark(latencymark);
+    }
+
+    @Override
     public void onData(final Object element) {
       outputCollector.emit((T) element);
     }
@@ -792,6 +807,11 @@ public final class TaskExecutorTest {
 
     @Override
     public void onWatermark(Watermark watermark) {
+      // do nothing
+    }
+
+    @Override
+    public void onLatencymark(Latencymark latencymark) {
       // do nothing
     }
 
@@ -829,6 +849,11 @@ public final class TaskExecutorTest {
     @Override
     public void onWatermark(Watermark watermark) {
       outputCollector.emitWatermark(watermark);
+    }
+
+    @Override
+    public void onLatencymark(Latencymark latencymark) {
+      outputCollector.emitLatencymark(latencymark);
     }
 
     @Override
@@ -877,6 +902,11 @@ public final class TaskExecutorTest {
     }
 
     @Override
+    public void onLatencymark(Latencymark latencymark) {
+      outputCollector.emitLatencymark(latencymark);
+    }
+
+    @Override
     public void close() {
       // Do nothing.
     }
@@ -897,6 +927,6 @@ public final class TaskExecutorTest {
 
   private TaskExecutor getTaskExecutor(final Task task, final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag) {
     return new TaskExecutor(task, taskDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
-      metricMessageSender, persistentConnectionToMasterMap, -1);
+      metricMessageSender, persistentConnectionToMasterMap, -1, -1);
   }
 }

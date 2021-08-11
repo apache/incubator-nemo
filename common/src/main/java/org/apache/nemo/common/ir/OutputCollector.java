@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.common.ir;
 
+import org.apache.nemo.common.punctuation.Latencymark;
 import org.apache.nemo.common.punctuation.Watermark;
 
 import java.io.Serializable;
@@ -43,6 +44,13 @@ public interface OutputCollector<O> extends Serializable {
    * @param watermark watermark
    */
   void emitWatermark(Watermark watermark);
+
+  /**
+   * Emit latencymark to downstream vertices.
+   *
+   * @param latencymark latencymark
+   */
+  void emitLatencymark(Latencymark latencymark);
 
   /**
    * Multi-destination emit.
