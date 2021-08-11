@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.task;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.executionproperty.BlockFetchFailureProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
@@ -45,6 +46,7 @@ class ParentTaskDataFetcher extends DataFetcher {
 
   // Non-finals (lazy fetching)
   private boolean firstFetch;
+  private boolean readNotSerialized;
   private int expectedNumOfIterators;
   private DataUtil.IteratorWithNumBytes currentIterator;
   private int currentIteratorIndex;
@@ -57,6 +59,7 @@ class ParentTaskDataFetcher extends DataFetcher {
     super(dataSource, outputCollector);
     this.inputReader = inputReader;
     this.firstFetch = true;
+    this.readNotSerialized = false;
     this.currentIteratorIndex = 0;
     this.iteratorQueue = new LinkedBlockingQueue<>();
   }
@@ -191,17 +194,19 @@ class ParentTaskDataFetcher extends DataFetcher {
     }
   }
 
-  public long getCurrSerBytes() {
+  public Pair<Boolean, Long> getCurrSerBytes() {
     try {
       if (currentIterator == null) {
-        return serBytes;
+        return Pair.of(false, -1L);
+      } else if (currentIterator.isReadNotSerializedData()) {
+        return Pair.of(true, 0L);
       }
-      return serBytes + currentIterator.getCurrNumSerializedBytes();
+      return Pair.of(currentIterator.isReadNotSerializedData(), serBytes + currentIterator.getCurrNumSerializedBytes());
     } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
-      return -1;
+      return Pair.of(false, -1L);
     } catch (final IllegalStateException e) {
       LOG.error("Failed to get the number of bytes of currently serialized data", e);
-      return -1;
+      return Pair.of(false, -1L);
     }
   }
 

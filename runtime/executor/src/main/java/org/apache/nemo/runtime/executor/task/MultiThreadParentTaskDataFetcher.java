@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.task;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
@@ -172,18 +173,23 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     }
   }
 
-  public long getCurrSerBytes() {
+  public Pair<Boolean, Long> getCurrSerBytes() {
     try {
       long currSerBytes = 0;
+      boolean isReadNotSerializedData = false;
       for (DataUtil.IteratorWithNumBytes iterator : iterators) {
-        currSerBytes += iterator.getCurrNumSerializedBytes();
+        if (!iterator.isReadNotSerializedData()) {
+          currSerBytes += iterator.getCurrNumSerializedBytes();
+        } else {
+          isReadNotSerializedData = true;
+        }
       }
-      return currSerBytes;
+      return Pair.of(isReadNotSerializedData, currSerBytes);
     } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
-      return -1;
+      return Pair.of(false, -1L);
     } catch (final IllegalStateException e) {
       LOG.error("Failed to get the number of bytes of currently serialized data", e);
-      return -1;
+      return Pair.of(false, -1L);
     }
   }
 

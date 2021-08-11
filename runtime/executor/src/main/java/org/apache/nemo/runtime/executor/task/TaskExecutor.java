@@ -161,24 +161,26 @@ public final class TaskExecutor {
     for (DataFetcher dataFetcher : dataFetchers) {
       String sourceVertexId = dataFetcher.getDataSource().getId();
 
-      long serializedReadBytes = -1;
+      Pair<Boolean, Long> serializedReadBytes = Pair.of(false, -1L);
 
-      if (dataFetcher instanceof ParentTaskDataFetcher) {
+      if (dataFetcher instanceof SourceVertexDataFetcher) {
+        serializedReadBytes = Pair.of(true, 0L);
+      } else if (dataFetcher instanceof ParentTaskDataFetcher) {
         serializedReadBytes = ((ParentTaskDataFetcher) dataFetcher).getCurrSerBytes();
       } else if (dataFetcher instanceof MultiThreadParentTaskDataFetcher) {
         serializedReadBytes = ((MultiThreadParentTaskDataFetcher) dataFetcher).getCurrSerBytes();
       }
 
       // if serializedReadBytes is -1, it means that serializedReadBytes is invalid
-      if (serializedReadBytes != -1) {
+      if (serializedReadBytes.right() != -1) {
         long lastSerializedReadBytes = lastSerializedReadByteMap.get(sourceVertexId);
-        lastSerializedReadByteMap.put(sourceVertexId, serializedReadBytes);
-        serializedReadBytes -= lastSerializedReadBytes;
+        lastSerializedReadByteMap.put(sourceVertexId, serializedReadBytes.right());
+        serializedReadBytes = Pair.of(serializedReadBytes.left(), serializedReadBytes.right() - lastSerializedReadBytes);
       }
 
       long numOfTuples = this.numOfReadTupleMap.get(sourceVertexId).get();
 
-      StreamMetric streamMetric = new StreamMetric(this.timeSinceLastRecordStreamMetric, currentTimestamp, numOfTuples, serializedReadBytes);
+      StreamMetric streamMetric = new StreamMetric(this.timeSinceLastRecordStreamMetric, currentTimestamp, numOfTuples, serializedReadBytes.right(), serializedReadBytes.left());
       streamMetricMap.put(sourceVertexId, streamMetric);
       numOfReadTupleMap.get(sourceVertexId).addAndGet(-numOfTuples);
     }
@@ -414,21 +416,16 @@ public final class TaskExecutor {
       return;
     }
 
-    metricMessageSender.send(TASK_METRIC_ID, taskId, "boundedSourceReadTime",
-      SerializationUtils.serialize(boundedSourceReadTime));
-    metricMessageSender.send(TASK_METRIC_ID, taskId, "serializedReadBytes",
-      SerializationUtils.serialize(serializedReadBytes));
-    metricMessageSender.send(TASK_METRIC_ID, taskId, "encodedReadBytes",
-      SerializationUtils.serialize(encodedReadBytes));
+    sendMetrics();
 
     // Phase 2: Finalize task-internal states and elements
     for (final VertexHarness vertexHarness : sortedHarnesses) {
       finalizeVertex(vertexHarness);
     }
 
-    metricMessageSender.send(TASK_METRIC_ID, taskId, "taskDuration",
-      SerializationUtils.serialize(System.currentTimeMillis() - executionStartTime));
     this.timeSinceLastExecution = System.currentTimeMillis();
+    metricMessageSender.send(TASK_METRIC_ID, taskId, "taskDuration",
+      SerializationUtils.serialize(timeSinceLastExecution - executionStartTime));
     if (idOfVertexPutOnHold == null) {
       taskStateManager.onTaskStateChanged(TaskState.State.COMPLETE, Optional.empty(), Optional.empty());
       LOG.info("{} completed", taskId);
@@ -440,6 +437,22 @@ public final class TaskExecutor {
     }
   }
 
+  /**
+   * Send data-processing metrics.
+   */
+  public void sendMetrics() {
+    metricMessageSender.send(TASK_METRIC_ID, taskId, "boundedSourceReadTime",
+      SerializationUtils.serialize(boundedSourceReadTime));
+    metricMessageSender.send(TASK_METRIC_ID, taskId, "serializedReadBytes",
+      SerializationUtils.serialize(serializedReadBytes));
+    metricMessageSender.send(TASK_METRIC_ID, taskId, "encodedReadBytes",
+      SerializationUtils.serialize(encodedReadBytes));
+  }
+
+  /**
+   * Finalize the vertex.
+   * @param vertexHarness the vertex harness.
+   */
   private void finalizeVertex(final VertexHarness vertexHarness) {
     closeTransform(vertexHarness);
     finalizeOutputWriters(vertexHarness);
@@ -489,9 +502,7 @@ public final class TaskExecutor {
    * @param currentTime   current time
    * @param prevTime      prev time
    */
-  private boolean isPollingTime(final long pollingPeriod,
-                                final long currentTime,
-                                final long prevTime) {
+  private boolean isPollingTime(final long pollingPeriod, final long currentTime, final long prevTime) {
     return (currentTime - prevTime) >= pollingPeriod;
   }
 
@@ -550,7 +561,6 @@ public final class TaskExecutor {
 
       final Iterator<DataFetcher> pendingIterator = pendingFetchers.iterator();
       final long currentTime = System.currentTimeMillis();
-
 
       if (isPollingTime(pollingInterval, currentTime, prevPollingTime)) {
         // We check pending data every polling interval

@@ -27,6 +27,7 @@ public class StreamMetric implements Serializable {
   private final long startTimeStamp;
   private final long endTimeStamp;
   private final long numOfReadTuples;
+  private final boolean isReadNotSerializedData;
   private final long serializedReadBytes;
 
 
@@ -39,10 +40,11 @@ public class StreamMetric implements Serializable {
    * @param serializedReadBytes the number of read bytes processed between starting point and endpoint.
    *
    */
-  public StreamMetric(long startTimeStamp, long endTimeStamp, long numOfTuples, long serializedReadBytes) {
+  public StreamMetric(long startTimeStamp, long endTimeStamp, long numOfTuples, long serializedReadBytes, boolean isReadNotSerializedData) {
     this.startTimeStamp = startTimeStamp;
     this.endTimeStamp = endTimeStamp;
     this.numOfReadTuples = numOfTuples;
+    this.isReadNotSerializedData = isReadNotSerializedData;
     this.serializedReadBytes = serializedReadBytes;
   }
 
@@ -81,4 +83,9 @@ public class StreamMetric implements Serializable {
   public long getSerializedReadBytes() {
     return serializedReadBytes;
   }
+
+  public boolean getIsReadNotSerializedData() {
+    return isReadNotSerializedData;
+  }
+
 }

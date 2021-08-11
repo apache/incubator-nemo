@@ -218,6 +218,7 @@ public final class DataUtil {
 
     private CountingInputStream serializedCountingStream = null;
     private CountingInputStream encodedCountingStream = null;
+    private boolean isLocal = false;
     private boolean hasNext = false;
     private T next;
     private boolean cannotContinueDecoding = false;
@@ -320,6 +321,11 @@ public final class DataUtil {
       }
       return numEncodedBytes + encodedCountingStream.getCount();
     }
+
+    @Override
+    public boolean isReadNotSerializedData() {
+      return false;
+    }
   }
 
   /**
@@ -404,6 +410,11 @@ public final class DataUtil {
         public E next() {
           return innerIterator.next();
         }
+
+        @Override
+        public boolean isReadNotSerializedData() {
+          return true;
+        }
       };
     }
 
@@ -448,6 +459,11 @@ public final class DataUtil {
         @Override
         public E next() {
           return innerIterator.next();
+        }
+
+        @Override
+        public boolean isReadNotSerializedData() {
+          return false;
         }
       };
     }
@@ -505,5 +521,7 @@ public final class DataUtil {
      * @throws IllegalStateException         when the information is not ready
      */
     long getCurrNumEncodedBytes() throws NumBytesNotSupportedException;
+
+    boolean isReadNotSerializedData();
   }
 }
