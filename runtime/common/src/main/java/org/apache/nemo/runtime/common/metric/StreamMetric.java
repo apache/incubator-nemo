@@ -71,7 +71,7 @@ public class StreamMetric implements Serializable {
   }
 
   /**
-   * Get the number of processed tuple
+   * Get the number of processed tuple.
    *
    * @return number of tuples.
    */
@@ -80,7 +80,7 @@ public class StreamMetric implements Serializable {
   }
 
   /**
-   * Get the number of read bytes
+   * Get the number of read bytes.
    *
    * @return number of read bytes.
    */
@@ -88,8 +88,12 @@ public class StreamMetric implements Serializable {
     return serializedReadBytes;
   }
 
+  /**
+   * Get a boolean value that indicates whether it read data from local block or not.
+   *
+   * @return a boolean value that indicates whether it read data form local block or not.
+   */
   public boolean getIsReadNotSerializedData() {
     return isReadNotSerializedData;
   }
-
 }

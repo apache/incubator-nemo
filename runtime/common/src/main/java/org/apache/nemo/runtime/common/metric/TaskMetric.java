@@ -36,7 +36,7 @@ public class TaskMetric implements StateMetric<TaskState.State> {
   private String containerId = "";
   private int scheduleAttempt = -1;
   private List<StateTransitionEvent<TaskState.State>> stateTransitionEvents = new ArrayList<>();
-  private final Map<String, List<StreamMetric>> streamMetricMap = new HashMap<>();
+  private final Map<String, List<StreamMetric>> streamMetrics = new HashMap<>();
   private Map<String, List<LatencyMetric>> latencymarks = new HashMap<>();
   private long taskDuration = -1;
   private long taskCPUTime = -1;
@@ -114,14 +114,14 @@ public class TaskMetric implements StateMetric<TaskState.State> {
    * Method related to stream metric.
    */
   public final Map<String, List<StreamMetric>> getStreamMetric() {
-    return this.streamMetricMap;
+    return this.streamMetrics;
   }
 
   private void setStreamMetric(final Map<String, StreamMetric> streamMetricMap) {
     for (String sourceVertexId : streamMetricMap.keySet()) {
       StreamMetric streamMetric = streamMetricMap.get(sourceVertexId);
-      this.streamMetricMap.putIfAbsent(sourceVertexId, new ArrayList<>());
-      this.streamMetricMap.get(sourceVertexId).add(streamMetric);
+      this.streamMetrics.putIfAbsent(sourceVertexId, new ArrayList<>());
+      this.streamMetrics.get(sourceVertexId).add(streamMetric);
     }
   }
 

@@ -152,7 +152,8 @@ public final class TaskExecutor {
     if (streamMetricRecordPeriod > 0) {
       this.timeSinceLastRecordStreamMetric = System.currentTimeMillis();
       this.periodicMetricService = Executors.newScheduledThreadPool(1);
-      this.periodicMetricService.scheduleAtFixedRate(this::saveStreamMetric, 0, streamMetricRecordPeriod, TimeUnit.MILLISECONDS);
+      this.periodicMetricService.scheduleAtFixedRate(
+        this::saveStreamMetric, 0, streamMetricRecordPeriod, TimeUnit.MILLISECONDS);
     }
     this.timeSinceLastExecution = System.currentTimeMillis();
   }
@@ -165,26 +166,27 @@ public final class TaskExecutor {
     for (DataFetcher dataFetcher : dataFetchers) {
       String sourceVertexId = dataFetcher.getDataSource().getId();
 
-      Pair<Boolean, Long> serializedReadBytes = Pair.of(false, -1L);
+      Pair<Boolean, Long> serReadBytes = Pair.of(false, -1L);
 
       if (dataFetcher instanceof SourceVertexDataFetcher) {
-        serializedReadBytes = Pair.of(true, 0L);
+        serReadBytes = Pair.of(true, 0L);
       } else if (dataFetcher instanceof ParentTaskDataFetcher) {
-        serializedReadBytes = ((ParentTaskDataFetcher) dataFetcher).getCurrSerBytes();
+        serReadBytes = ((ParentTaskDataFetcher) dataFetcher).getCurrSerBytes();
       } else if (dataFetcher instanceof MultiThreadParentTaskDataFetcher) {
-        serializedReadBytes = ((MultiThreadParentTaskDataFetcher) dataFetcher).getCurrSerBytes();
+        serReadBytes = ((MultiThreadParentTaskDataFetcher) dataFetcher).getCurrSerBytes();
       }
 
       // if serializedReadBytes is -1, it means that serializedReadBytes is invalid
-      if (serializedReadBytes.right() != -1) {
+      if (serReadBytes.right() != -1) {
         long lastSerializedReadBytes = lastSerializedReadByteMap.get(sourceVertexId);
-        lastSerializedReadByteMap.put(sourceVertexId, serializedReadBytes.right());
-        serializedReadBytes = Pair.of(serializedReadBytes.left(), serializedReadBytes.right() - lastSerializedReadBytes);
+        lastSerializedReadByteMap.put(sourceVertexId, serReadBytes.right());
+        serReadBytes = Pair.of(serReadBytes.left(), serReadBytes.right() - lastSerializedReadBytes);
       }
 
       long numOfTuples = this.numOfReadTupleMap.get(sourceVertexId).get();
 
-      StreamMetric streamMetric = new StreamMetric(this.timeSinceLastRecordStreamMetric, currentTimestamp, numOfTuples, serializedReadBytes.right(), serializedReadBytes.left());
+      StreamMetric streamMetric = new StreamMetric(this.timeSinceLastRecordStreamMetric, currentTimestamp, numOfTuples,
+        serReadBytes.right(), serReadBytes.left());
       streamMetricMap.put(sourceVertexId, streamMetric);
       numOfReadTupleMap.get(sourceVertexId).addAndGet(-numOfTuples);
     }

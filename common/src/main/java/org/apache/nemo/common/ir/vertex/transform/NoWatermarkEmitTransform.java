@@ -40,7 +40,6 @@ public abstract class NoWatermarkEmitTransform<I, O> implements Transform<I, O> 
 
   @Override
   public final void onLatencymark(final Latencymark latencymark) {
-
+    // do nothing
   }
-
 }

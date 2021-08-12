@@ -493,7 +493,7 @@ public final class DataUtil {
     /**
      * This method can be called before the every actual data completely taken from iterator,
      * When the every actual data completely taken from iterator,
-     * its return value must be same with a return value of getNumSerializedBytes()
+     * its return value must be same with a return value of getNumSerializedBytes().
      *
      * @return the number of currently read bytes in serialized form (which is, for example, encoded and compressed)
      * @throws NumBytesNotSupportedException when the operation is not supported
@@ -514,7 +514,7 @@ public final class DataUtil {
     /**
      * This method can be called before the every actual data completely taken from iterator,
      * When the every actual data completely taken from iterator,
-     * its return value must be same with a return value of getNumSerializedBytes()
+     * its return value must be same with a return value of getNumSerializedBytes().
      *
      * @return the number of bytes in encoded form (which is ready to be decoded)
      * @throws NumBytesNotSupportedException when the operation is not supported
