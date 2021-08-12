@@ -71,7 +71,17 @@ public final class RuntimeIdManager {
     if (index < 0 || attempt < 0) {
       throw new IllegalStateException(index + ", " + attempt);
     }
-    return stageId + SPLITTER + index + SPLITTER + attempt;
+    return stageId + SPLITTER + index + SPLITTER + "*" + SPLITTER + attempt;
+  }
+
+  public static String generateWorkStealingTaskId(final String stageId,
+                                                  final int index,
+                                                  final int partial,
+                                                  final int attempt) {
+    if (index < 0 || partial < 0 || attempt < 0) {
+      throw new IllegalStateException(index + ", " + partial + ", "+ attempt);
+    }
+    return stageId + SPLITTER + index + SPLITTER + partial + SPLITTER + attempt;
   }
 
   /**
@@ -183,6 +193,13 @@ public final class RuntimeIdManager {
     return Integer.valueOf(split(taskId)[1]);
   }
 
+  public static boolean isWorkStealingTask(final String taskId) {
+    return !split(taskId)[2].equals("*");
+  }
+
+  public static int getPartialFromTaskId(final String taskId) {
+    return Integer.valueOf(split(taskId)[2]);
+  }
   /**
    * Extracts the attempt from a task ID.
    *
@@ -190,7 +207,7 @@ public final class RuntimeIdManager {
    * @return the attempt.
    */
   public static int getAttemptFromTaskId(final String taskId) {
-    return Integer.valueOf(split(taskId)[2]);
+    return Integer.valueOf(split(taskId)[3]);
   }
 
   private static String[] split(final String id) {

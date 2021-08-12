@@ -291,7 +291,7 @@ public final class TaskExecutor {
                 new ParentTaskDataFetcher(
                   parentTaskReader.getSrcIrVertex(),
                   parentTaskReader,
-                  dataFetcherOutputCollector));
+                  dataFetcherOutputCollector, taskId));
             }
           }
         });

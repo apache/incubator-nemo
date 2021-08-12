@@ -91,26 +91,17 @@ public final class BlockInputReader implements InputReader {
   }
 
   public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read(final boolean enableWorkStealing,
-                                                                     final int maxSplitNum) {
+                                                                     final int maxSplitNum,
+                                                                     final int index) {
+    /* First, fetch */
+    List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = read();
+
     if (!enableWorkStealing) {
-      return read();
+      return futures;
     }
 
-    // change here
-    final Optional<CommunicationPatternProperty.Value> comValueOptional =
-      runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
-    final CommunicationPatternProperty.Value comValue = comValueOptional.orElseThrow(IllegalStateException::new);
-
-    switch (comValue) {
-      case ONE_TO_ONE:
-        return Collections.singletonList(readOneToOne());
-      case BROADCAST:
-        return readBroadcast(index -> true);
-      case SHUFFLE:
-        return readDataInRange(index -> true);
-      default:
-        throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
-    }
+    final int baseNumber = Math.min(futures.size(), maxSplitNum);
+    return futures.subList(index * (futures.size() / baseNumber), (index+1) * (futures.size() / baseNumber));
   }
 
   @Override

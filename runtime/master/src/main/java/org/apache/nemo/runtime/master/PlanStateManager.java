@@ -76,7 +76,7 @@ public final class PlanStateManager {
   private final Map<String, StageState> stageIdToState;
 
   // list of attempt states sorted by attempt idx
-  private final Map<String, Map<Integer, List<TaskState>>> stageIdToTaskIdxToAttemptStates;
+  private final Map<String, Map<Integer, List<List<TaskState>>>> stageIdToTaskIdxToAttemptStates;
 
   /**
    * Used for speculative cloning. (in the unit of milliseconds - ms)

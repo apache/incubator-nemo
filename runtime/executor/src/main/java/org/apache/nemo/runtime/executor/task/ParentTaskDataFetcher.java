@@ -22,6 +22,7 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.executionproperty.BlockFetchFailureProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.InputReader;
 import org.slf4j.Logger;
@@ -40,6 +41,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 class ParentTaskDataFetcher extends DataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(ParentTaskDataFetcher.class);
 
+  private final String taskId;
   private final InputReader inputReader;
   private final LinkedBlockingQueue iteratorQueue;
 
@@ -57,9 +59,11 @@ class ParentTaskDataFetcher extends DataFetcher {
 
   ParentTaskDataFetcher(final IRVertex dataSource,
                         final InputReader inputReader,
-                        final OutputCollector outputCollector) {
+                        final OutputCollector outputCollector,
+                        final String taskId) {
     super(dataSource, outputCollector);
     this.inputReader = inputReader;
+    this.taskId = taskId;
     this.firstFetch = true;
     this.currentIteratorIndex = 0;
     this.iteratorQueue = new LinkedBlockingQueue<>();
@@ -160,7 +164,7 @@ class ParentTaskDataFetcher extends DataFetcher {
 
   private void fetchDataLazily() {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = inputReader
-      .read(ENABLE_WORK_STEALING, MAGIC_SPLIT_NUM);
+      .read(ENABLE_WORK_STEALING, MAGIC_SPLIT_NUM, RuntimeIdManager.get);
     this.expectedNumOfIterators = futures.size();
     for (int i = 0; i < futures.size(); i++) {
       final int index = i;
