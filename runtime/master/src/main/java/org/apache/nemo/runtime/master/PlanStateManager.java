@@ -633,7 +633,7 @@ public final class PlanStateManager {
   public synchronized String toString() {
     final StringBuilder sb = new StringBuilder("{");
     sb.append("\"planId\": \"").append(planId).append("\", ");
-    if (physicalPlan.getStageDAG() != null) {
+    if (physicalPlan != null) {
       sb.append("\"stages\": [");
       boolean isFirstStage = true;
       for (final Stage stage : physicalPlan.getStageDAG().getVertices()) {
@@ -657,8 +657,9 @@ public final class PlanStateManager {
         }
         sb.append("]}");
       }
-      sb.append("]}");
+      sb.append("]");
     }
+    sb.append("}");
     return sb.toString();
   }
 }
