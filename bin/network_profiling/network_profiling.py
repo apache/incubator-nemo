@@ -17,16 +17,11 @@
 #  specific language governing permissions and limitations
 #  under the License.
 
-#
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
+'''
+This script takes the slave nodes specified under ~/hadoop/etc/slaves, and measures the network information
+between each pair of nodes specified with the hadoop slaves. This then aggregates each results, and writes them on
+result.json, containing all network profile information for each pair of nodes. This runs in a multi-thread style.
+'''
 
 import paramiko
 from tqdm import tqdm
@@ -35,6 +30,11 @@ import threading
 
 
 def collect_candidates(list):
+  '''
+  Collect candidate pairs of nodes from the list of slave nodes.
+  :param list: the list of slave nodes.
+  :return: candidate pairs of nodes, each joined by a slash (/).
+  '''
   if len(list) == 1:
     return []
   else:
@@ -44,6 +44,15 @@ def collect_candidates(list):
 
 
 def qperf(candidate, username, key, busy_nodes, result):
+  '''
+  Measure the network statistics of the candidate nodes using the qperf library from linux.
+  :param candidate: a pair of nodes, joined by a slash (/).
+  :param username: the username to use to connect via ssh.
+  :param key: the key to use to connect via ssh.
+  :param busy_nodes: we keep the list of busy nodes that are currently being profiled to prevent intervention.
+  :param result: we append the result to this result.
+  :return: void.
+  '''
   ssh = paramiko.SSHClient()
   ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
