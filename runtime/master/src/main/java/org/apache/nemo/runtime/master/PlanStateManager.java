@@ -183,6 +183,7 @@ public final class PlanStateManager {
    * @return executable task attempts
    */
   public synchronized List<String> getTaskAttemptsToSchedule(final String stageId) {
+    LOG.error("GET TASK ATTEMPTS TO SCHEDULE at {}", stageId);
     if (getStageState(stageId).equals(StageState.State.COMPLETE)) {
       // This stage is done
       return new ArrayList<>(0);

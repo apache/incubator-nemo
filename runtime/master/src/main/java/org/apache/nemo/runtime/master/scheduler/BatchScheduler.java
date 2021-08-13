@@ -304,6 +304,7 @@ public final class BatchScheduler implements Scheduler {
    * - We make {@link TaskDispatcher} dispatch only the tasks that are READY.
    */
   private void doSchedule() {
+    LOG.error("DO Schedule");
     final Optional<List<Stage>> earliest =
       BatchSchedulerUtils.selectEarliestSchedulableGroup(sortedScheduleGroups, planStateManager);
 
