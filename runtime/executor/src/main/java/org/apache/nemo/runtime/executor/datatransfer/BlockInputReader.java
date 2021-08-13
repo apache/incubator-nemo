@@ -101,7 +101,7 @@ public final class BlockInputReader implements InputReader {
     }
 
     final int baseNumber = Math.min(futures.size(), maxSplitNum);
-    return futures.subList(index * (futures.size() / baseNumber), (index+1) * (futures.size() / baseNumber));
+    return futures.subList(index * (futures.size() / baseNumber), (index + 1) * (futures.size() / baseNumber));
   }
 
   @Override

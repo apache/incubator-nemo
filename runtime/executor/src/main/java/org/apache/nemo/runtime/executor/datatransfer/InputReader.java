@@ -42,7 +42,9 @@ public interface InputReader {
    *
      * @return the list of iterators.
     */
-  List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read(boolean enableWorkStealing, int maxSplitNum);
+  List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read(boolean enableWorkStealing,
+                                                              int maxSplitNum,
+                                                              int index);
 
   /**
    * Retry reading input data.

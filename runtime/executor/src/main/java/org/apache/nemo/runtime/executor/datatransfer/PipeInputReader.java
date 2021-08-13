@@ -84,7 +84,9 @@ public final class PipeInputReader implements InputReader {
   }
 
   @Override
-  public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read(boolean enableWorkStealing, int maxSplitNum) {
+  public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read(final boolean enableWorkStealing,
+                                                                     final int maxSplitNum,
+                                                                     final int index) {
     return read();
   }
 

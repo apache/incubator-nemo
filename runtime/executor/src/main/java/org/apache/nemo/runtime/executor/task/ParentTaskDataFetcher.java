@@ -53,8 +53,8 @@ class ParentTaskDataFetcher extends DataFetcher {
   private long serBytes = 0;
   private long encodedBytes = 0;
 
-  private final int MAGIC_SPLIT_NUM = 10;
-  private final boolean ENABLE_WORK_STEALING = true;
+  private final int magicSplitNum = 10;
+  private final boolean enableWorkStealing = true;
 
 
   ParentTaskDataFetcher(final IRVertex dataSource,
@@ -164,7 +164,7 @@ class ParentTaskDataFetcher extends DataFetcher {
 
   private void fetchDataLazily() {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = inputReader
-      .read(ENABLE_WORK_STEALING, MAGIC_SPLIT_NUM, RuntimeIdManager.get);
+      .read(enableWorkStealing, magicSplitNum, RuntimeIdManager.getPartialFromTaskId(taskId));
     this.expectedNumOfIterators = futures.size();
     for (int i = 0; i < futures.size(); i++) {
       final int index = i;

@@ -79,7 +79,7 @@ public final class RuntimeIdManager {
                                                   final int partial,
                                                   final int attempt) {
     if (index < 0 || partial < 0 || attempt < 0) {
-      throw new IllegalStateException(index + ", " + partial + ", "+ attempt);
+      throw new IllegalStateException(index + ", " + partial + ", " + attempt);
     }
     return stageId + SPLITTER + index + SPLITTER + partial + SPLITTER + attempt;
   }
@@ -198,7 +198,7 @@ public final class RuntimeIdManager {
   }
 
   public static int getPartialFromTaskId(final String taskId) {
-    return Integer.valueOf(split(taskId)[2]);
+    return split(taskId)[2].equals("*") ? 0 : Integer.valueOf(split(taskId)[2]);
   }
   /**
    * Extracts the attempt from a task ID.
