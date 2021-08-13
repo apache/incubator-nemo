@@ -60,7 +60,7 @@ under the License.
     <netty.version>4.1.66.Final</netty.version>
     <guava.version>23.0</guava.version>
     <grpc.version>1.39.0</grpc.version>
-    <jackson.version>2.10.5.1</jackson.version>
+    <jackson.version>2.10.5</jackson.version>
     <netlib.version>1.1.2</netlib.version>
     <jetty-server.version>9.4.43.v20210629</jetty-server.version>
     <jetty-servlet.version>9.4.43.v20210629</jetty-servlet.version>
