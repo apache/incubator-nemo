@@ -141,6 +141,7 @@ public final class PlanStateManager {
    */
   public synchronized void updatePlan(final PhysicalPlan physicalPlanToUpdate,
                                       final int maxScheduleAttemptToSet) {
+    LOG.error("update plan");
     if (!initialized) {
       // First scheduling.
       this.initialized = true;
@@ -161,6 +162,7 @@ public final class PlanStateManager {
    * TODO #182: Consider reshaping in run-time optimization. At now, we only consider plan appending.
    */
   private void initializeStates() {
+    LOG.error("initialize states");
     onPlanStateChanged(PlanState.State.EXECUTING);
     physicalPlan.getStageDAG().topologicalDo(stage -> {
       stageIdToState.putIfAbsent(stage.getId(), new StageState());
@@ -168,7 +170,7 @@ public final class PlanStateManager {
 
       // for each task idx of this stage
       stage.getTaskIndices().forEach(taskIndex ->
-        stageIdToTaskIdxToAttemptStates.get(stage.getId()).putIfAbsent(taskIndex, new ArrayList<>()));
+        stageIdToTaskIdxToAttemptStates.get(stage.getId()).putIfAbsent(taskIndex, new ArrayList<>(10)));
         // task states will be initialized lazily in getTaskAttemptsToSchedule()
     });
   }
@@ -193,8 +195,10 @@ public final class PlanStateManager {
     final List<String> taskAttemptsToSchedule = new ArrayList<>();
     final Stage stage = physicalPlan.getStageDAG().getVertexById(stageId);
     for (final int taskIndex : stage.getTaskIndices()) {
+      LOG.error("{} task index {}", stageId, taskIndex);
       final List<List<TaskState>> attemptStatesForThisTaskIndex =
         stageIdToTaskIdxToAttemptStates.get(stageId).get(taskIndex);
+      LOG.error("partial index size : {}", attemptStatesForThisTaskIndex.size()); // no tasks in here!
       for (List<TaskState> attemptStatesForThisPartialTaskIndex : attemptStatesForThisTaskIndex) {
 
         // If one of the attempts is COMPLETE, do not schedule
@@ -242,7 +246,7 @@ public final class PlanStateManager {
 
       }
     }
-
+    LOG.error("attempts to schedule: {} tasks", taskAttemptsToSchedule.size());
     return taskAttemptsToSchedule;
   }
 
@@ -639,6 +643,7 @@ public final class PlanStateManager {
    * @param suffix suffix for file name
    */
   public void storeJSON(final String suffix) {
+    LOG.error("STORE JSON {}", suffix);
     if (dagDirectory.equals(EMPTY_DAG_DIRECTORY)) {
       return;
     }
@@ -682,7 +687,6 @@ public final class PlanStateManager {
 
       boolean isFirstTask = true;
       for (final Map.Entry<String, TaskState.State> entry : getTaskAttemptIdsToItsState(stage.getId()).entrySet()) {
-        LOG.error("in tostring");
         if (!isFirstTask) {
           sb.append(", ");
         }

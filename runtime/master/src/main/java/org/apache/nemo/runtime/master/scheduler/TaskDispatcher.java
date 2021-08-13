@@ -183,6 +183,7 @@ final class TaskDispatcher {
    * Run the dispatcher thread.
    */
   void run() {
+    LOG.error("Run in task dispatcher");
     if (!isTerminated && !isSchedulerRunning) {
       dispatcherThread.execute(new TaskDispatcherThread());
       dispatcherThread.shutdown();
