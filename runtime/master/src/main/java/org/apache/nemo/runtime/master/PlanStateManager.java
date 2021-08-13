@@ -251,6 +251,7 @@ public final class PlanStateManager {
    * @return all task attempt ids of the stage.
    */
   public synchronized Set<String> getAllTaskAttemptsOfStage(final String stageId) {
+    LOG.error("get al task attempts of stage");
     return getTaskAttemptIdsToItsState(stageId).keySet();
   }
 
@@ -263,7 +264,7 @@ public final class PlanStateManager {
    */
   public synchronized Map<String, Long> getExecutingTaskToRunningTimeMs(final String stageId) {
     LOG.error("get executing task to running time ms");
-;    final long curTime = System.currentTimeMillis();
+    final long curTime = System.currentTimeMillis();
     final Map<String, Long> result = new HashMap<>();
 
     final Map<Integer, List<List<TaskState>>> taskIdToState = stageIdToTaskIdxToAttemptStates.get(stageId);
@@ -508,6 +509,7 @@ public final class PlanStateManager {
    */
   @VisibleForTesting
   public synchronized Map<String, TaskState.State> getAllTaskAttemptIdsToItsState() {
+    LOG.error("get all task attempt ids to its state");
     return physicalPlan.getStageDAG().getVertices()
       .stream()
       .map(Stage::getId)
@@ -680,6 +682,7 @@ public final class PlanStateManager {
 
       boolean isFirstTask = true;
       for (final Map.Entry<String, TaskState.State> entry : getTaskAttemptIdsToItsState(stage.getId()).entrySet()) {
+        LOG.error("in tostring");
         if (!isFirstTask) {
           sb.append(", ");
         }
