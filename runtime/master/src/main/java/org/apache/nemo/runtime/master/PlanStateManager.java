@@ -262,7 +262,8 @@ public final class PlanStateManager {
    * @return a map from an EXECUTING task to its running time so far.
    */
   public synchronized Map<String, Long> getExecutingTaskToRunningTimeMs(final String stageId) {
-    final long curTime = System.currentTimeMillis();
+    LOG.error("get executing task to running time ms");
+;    final long curTime = System.currentTimeMillis();
     final Map<String, Long> result = new HashMap<>();
 
     final Map<Integer, List<List<TaskState>>> taskIdToState = stageIdToTaskIdxToAttemptStates.get(stageId);
@@ -322,6 +323,7 @@ public final class PlanStateManager {
    * @param newTaskState the new state of the task.
    */
   public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newTaskState) {
+    LOG.error("on task state changed");
     // Change task state
     final StateMachine taskState = getTaskStateHelper(taskId).getStateMachine();
     LOG.debug("Task State Transition: id {}, from {} to {}",
@@ -551,6 +553,7 @@ public final class PlanStateManager {
   }
 
   private Map<String, TaskState.State> getTaskAttemptIdsToItsState(final String stageId) {
+    LOG.error("get task attempt ids to its state");
     final Map<String, TaskState.State> result = new HashMap<>();
     final Map<Integer, List<List<TaskState>>> taskIdToState = stageIdToTaskIdxToAttemptStates.get(stageId);
     for (int taskIndex : taskIdToState.keySet()) {
@@ -592,6 +595,7 @@ public final class PlanStateManager {
   }
 
   private List<TaskState.State> getPeerAttemptsForTheSameTaskIndex(final String taskId) {
+    LOG.error("get peer attempts for the same task index");
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
     final int partialIndex = RuntimeIdManager.getPartialFromTaskId(taskId);
