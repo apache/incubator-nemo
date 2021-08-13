@@ -563,10 +563,11 @@ public final class PlanStateManager {
           }
         }
       } else {
-        List<TaskState> attemptStates = partialIdxAttempts.get(0);
-        for (int attempt = 0; attempt < attemptStates.size(); attempt++) {
-          result.put(RuntimeIdManager.generateTaskId(stageId, taskIndex, attempt),
-            (TaskState.State) attemptStates.get(attempt).getStateMachine().getCurrentState());
+        for (List<TaskState> attemptStates : partialIdxAttempts) {
+          for (int attempt = 0; attempt < attemptStates.size(); attempt++) {
+            result.put(RuntimeIdManager.generateTaskId(stageId, taskIndex, attempt),
+              (TaskState.State) attemptStates.get(attempt).getStateMachine().getCurrentState());
+          }
         }
       }
 
