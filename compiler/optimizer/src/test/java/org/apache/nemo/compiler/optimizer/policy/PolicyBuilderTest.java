@@ -46,6 +46,12 @@ public final class PolicyBuilderTest {
   }
 
   @Test
+  public void testIntermediateAccumulatorPolicy() {
+    assertEquals(11, IntermediateAccumulatorPolicy.BUILDER.getCompileTimePasses().size());
+    assertEquals(0, IntermediateAccumulatorPolicy.BUILDER.getRunTimePasses().size());
+  }
+
+  @Test
   public void testShouldFailPolicy() {
     try {
       final Policy failPolicy = new PolicyBuilder()
