@@ -49,7 +49,7 @@ public class IntermediateAccumulatorInsertionPass extends ReshapingPass {
    */
   public IntermediateAccumulatorInsertionPass() {
     super(IntermediateAccumulatorInsertionPass.class);
-    this.networkFilePath = Util.fetchProjectRootPath() + "/bin/labeldict.json";
+    this.networkFilePath = Util.fetchProjectRootPath() + "/bin/network_profiling/labeldict.json";
   }
 
   /**
