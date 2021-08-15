@@ -45,9 +45,9 @@ import java.util.*;
  * @param <InputT> input type
  * @param <OutputT> output type
  */
-public final class GBKTransform<K, InputT, OutputT>
+public final class CombineTransform<K, InputT, OutputT>
   extends AbstractDoFnTransform<KV<K, InputT>, KeyedWorkItem<K, InputT>, KV<K, OutputT>> {
-  private static final Logger LOG = LoggerFactory.getLogger(GBKTransform.class.getName());
+  private static final Logger LOG = LoggerFactory.getLogger(CombineTransform.class.getName());
   private final SystemReduceFn reduceFn;
   private transient InMemoryTimerInternalsFactory<K> inMemoryTimerInternalsFactory;
   private transient InMemoryStateInternalsFactory<K> inMemoryStateInternalsFactory;
@@ -57,16 +57,31 @@ public final class GBKTransform<K, InputT, OutputT>
   private boolean dataReceived = false;
   private transient OutputCollector originOc;
   private final boolean isPartialCombining;
+  private final CombineTransform intermediateCombine;
 
-  public GBKTransform(final Coder<KV<K, InputT>> inputCoder,
-                      final Map<TupleTag<?>, Coder<?>> outputCoders,
-                      final TupleTag<KV<K, OutputT>> mainOutputTag,
-                      final WindowingStrategy<?, ?> windowingStrategy,
-                      final PipelineOptions options,
-                      final SystemReduceFn reduceFn,
-                      final DoFnSchemaInformation doFnSchemaInformation,
-                      final DisplayData displayData,
-                      final boolean isPartialCombining) {
+  public CombineTransform(final Coder<KV<K, InputT>> inputCoder,
+                          final Map<TupleTag<?>, Coder<?>> outputCoders,
+                          final TupleTag<KV<K, OutputT>> mainOutputTag,
+                          final WindowingStrategy<?, ?> windowingStrategy,
+                          final PipelineOptions options,
+                          final SystemReduceFn reduceFn,
+                          final DoFnSchemaInformation doFnSchemaInformation,
+                          final DisplayData displayData,
+                          final boolean isPartialCombining) {
+    this(inputCoder, outputCoders, mainOutputTag, windowingStrategy, options, reduceFn,
+      doFnSchemaInformation, displayData, isPartialCombining, null);
+  }
+
+  public CombineTransform(final Coder<KV<K, InputT>> inputCoder,
+                          final Map<TupleTag<?>, Coder<?>> outputCoders,
+                          final TupleTag<KV<K, OutputT>> mainOutputTag,
+                          final WindowingStrategy<?, ?> windowingStrategy,
+                          final PipelineOptions options,
+                          final SystemReduceFn reduceFn,
+                          final DoFnSchemaInformation doFnSchemaInformation,
+                          final DisplayData displayData,
+                          final boolean isPartialCombining,
+                          final CombineTransform intermediateCombine) {
     super(null,
       inputCoder,
       outputCoders,
@@ -80,6 +95,7 @@ public final class GBKTransform<K, InputT, OutputT>
       Collections.emptyMap()); /* does not have side inputs */
     this.reduceFn = reduceFn;
     this.isPartialCombining = isPartialCombining;
+    this.intermediateCombine = intermediateCombine;
   }
 
   /**
@@ -272,6 +288,13 @@ public final class GBKTransform<K, InputT, OutputT>
     return isPartialCombining;
   }
 
+  /**
+   * Get the intermediate combine transform if possible.
+   * @return the intermediate transform if possible.
+   */
+  public Optional<CombineTransform> getIntermediateCombine() {
+    return Optional.ofNullable(intermediateCombine);
+  }
 
   /** Wrapper class for {@link OutputCollector}. */
   public class GBKOutputCollector implements OutputCollector<WindowedValue<KV<K, OutputT>>> {
