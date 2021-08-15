@@ -25,7 +25,7 @@ under the License.
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>nexmark</artifactId>
+  <artifactId>nemo-examples-nexmark</artifactId>
   <name>Nemo Examples: NEXMark</name>
 
   <dependencies>
