@@ -18,7 +18,6 @@
  */
 package org.apache.nemo.driver;
 
-import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.backend.Backend;
@@ -37,6 +36,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
 import java.util.Base64;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -87,7 +89,9 @@ public final class UserApplicationRunner {
       final long startTime = System.currentTimeMillis();
       LOG.info("##### Nemo Compiler Start #####");
 
-      final IRDAG dag = SerializationUtils.deserialize(Base64.getDecoder().decode(dagString));
+      final InputStream fis = new ByteArrayInputStream(Base64.getDecoder().decode(dagString));
+      final ObjectInputStream o = new ObjectInputStream(fis);
+      final IRDAG dag = (IRDAG) o.readObject();
       final IRDAG optimizedDAG = optimizer.optimizeAtCompileTime(dag);
       ((NemoPlanRewriter) planRewriter).setCurrentIRDAG(optimizedDAG);
       final PhysicalPlan physicalPlan = backend.compile(optimizedDAG);
