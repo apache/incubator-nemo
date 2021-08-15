@@ -49,7 +49,7 @@ under the License.
     <maven.javadoc.version>3.3.0</maven.javadoc.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <auto-service.version>1.0</auto-service.version>
-    <beam.version>2.24.0</beam.version> <!-- Further versions need migration -->
+    <beam.version>2.24.0</beam.version> <!-- > 2.25 needs migration -->
     <spark.version>2.4.4</spark.version>
     <scala.version>2.12.10</scala.version>
     <kryo.version>4.0.2</kryo.version>
@@ -60,7 +60,7 @@ under the License.
     <netty.version>4.1.66.Final</netty.version>
     <guava.version>23.0</guava.version>
     <grpc.version>1.39.0</grpc.version>
-    <jackson.version>2.10.5</jackson.version> <!-- Further versions need migration -->
+    <jackson.version>2.10.5</jackson.version> <!-- > 2.11 needs migration -->
     <netlib.version>1.1.2</netlib.version>
     <jetty-server.version>9.4.43.v20210629</jetty-server.version>
     <jetty-servlet.version>9.4.43.v20210629</jetty-servlet.version>
