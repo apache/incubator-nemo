@@ -22,8 +22,8 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Latency mark is conveyor that has data for debugging purpose.
- * It is created only from source vertex and record the timestamp when it created and taskId where it created.
+ * Latency mark is conveyor that has data for debugging.
+ * It is created only from source vertex and record the timestamp when it is created and taskId where it is created.
  */
 public final class Latencymark implements Serializable {
   private final String createdtaskId;
@@ -31,8 +31,8 @@ public final class Latencymark implements Serializable {
   private final long timestamp;
 
   /**
-   * @param taskId task id where it created
-   * @param timestamp timestamp when it created
+   * @param taskId task id where it is created
+   * @param timestamp timestamp when it is created
    */
   public Latencymark(final String taskId, final long timestamp) {
     this.createdtaskId = taskId;
@@ -48,7 +48,7 @@ public final class Latencymark implements Serializable {
   }
 
   /**
-   * @return the task id where it created
+   * @return the task id where it is created
    */
   public String getCreatedtaskId() {
     return createdtaskId;
@@ -56,7 +56,7 @@ public final class Latencymark implements Serializable {
 
 
   /**
-   * @return the task id where it delivered from. task id of upstream task
+   * @return the task id where it is delivered from. task id of upstream task
    */
   public String getLastTaskId() {
     return lastTaskId;
