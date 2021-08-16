@@ -121,7 +121,7 @@ $ ./bin/run_nexmark.sh \
     -user_main org.apache.beam.sdk.nexmark.Main \
     -optimization_policy org.apache.nemo.compiler.optimizer.policy.StreamingPolicy \
     -scheduler_impl_class_name org.apache.nemo.runtime.master.scheduler.StreamingScheduler \
-    -user_args "--runner=NemoRunner --streaming=true --query=0 --numEventGenerators=1"
+    -user_args "--runner=NemoRunner --streaming=true --query=0 --numEventGenerators=1 --manageResources=false --monitorJobs=false"
 
 ```
 ## Resource Configuration
