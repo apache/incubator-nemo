@@ -22,6 +22,7 @@ import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.test.ArgBuilder;
 import org.apache.nemo.common.test.ExampleTestUtil;
 import org.apache.nemo.examples.beam.policy.StreamingPolicyParallelismFive;
+import org.apache.nemo.runtime.master.scheduler.StreamingScheduler;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
@@ -48,7 +49,7 @@ public final class WindowedBroadcastITCase {
   // @Test (timeout = TIMEOUT)
   public void testUnboundedSlidingWindow() throws Exception {
     builder = new ArgBuilder()
-      .addScheduler("org.apache.nemo.runtime.master.scheduler.StreamingScheduler")
+      .addScheduler(StreamingScheduler.class.getCanonicalName())
       .addUserMain(WindowedBroadcast.class.getCanonicalName())
       .addUserArgs(outputFilePath);
 
