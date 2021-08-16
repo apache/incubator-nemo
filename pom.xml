@@ -74,7 +74,7 @@ under the License.
     <powermock.version>2.0.9</powermock.version>
     <surefire.version>3.0.0-M4</surefire.version> <!-- > M5 errors with Java11 -->
     <junit.version>4.13.2</junit.version>
-    <checkstyle.version>8.23</checkstyle.version>
+    <checkstyle.version>8.29</checkstyle.version>
   </properties>
 
   <modules>
