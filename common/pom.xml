@@ -37,6 +37,11 @@ under the License.
       <version>${reef.version}</version>
     </dependency>
     <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>${commons-lang.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.reef</groupId>
       <artifactId>reef-common</artifactId>
       <version>${reef.version}</version>

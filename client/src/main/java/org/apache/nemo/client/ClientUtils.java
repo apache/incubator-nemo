@@ -19,7 +19,6 @@
 
 package org.apache.nemo.client;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.common.exception.MetricException;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -27,6 +26,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.stream.Stream;
 
 /**
  * Utility class for the Client.
@@ -44,6 +48,7 @@ public final class ClientUtils {
    * Handler for the launch optimization message.
    *
    * @param message the message received from the driver.
+   * @param driverRPCServer driver RPC server.
    */
   static void handleOptimizationType(final ControlMessage.DriverToClientMessage message,
                                      final DriverRPCServer driverRPCServer) {
@@ -83,8 +88,13 @@ public final class ClientUtils {
 
       final String resultsFile = projectRootPath + "/ml/results.out";
       LOG.info("Reading the results of the script at {}", resultsFile);
-      return FileUtils.readFileToString(new File(resultsFile), "UTF-8");
-    } catch (Exception e) {
+      final StringBuilder contentBuilder = new StringBuilder();
+      try (Stream<String> stream = Files.lines(Paths.get(resultsFile), StandardCharsets.UTF_8)) {
+        stream.forEach(s -> contentBuilder.append(s).append("\n"));
+      }
+      return contentBuilder.toString();
+    } catch (IOException | InterruptedException e) {
+      Thread.currentThread().interrupt();
       throw new MetricException(e);
     }
   }
