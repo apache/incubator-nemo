@@ -25,6 +25,7 @@ import org.apache.nemo.common.test.ExampleTestUtil;
 import org.apache.nemo.compiler.optimizer.policy.DefaultPolicy;
 import org.apache.nemo.examples.beam.policy.DefaultPolicyParallelismFive;
 import org.apache.nemo.examples.beam.policy.StreamingPolicyParallelismFive;
+import org.apache.nemo.runtime.master.scheduler.StreamingScheduler;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -92,7 +93,7 @@ public final class WindowedWordCountITCase {
   @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testStreamingSchedulerAndPipeFixedWindow() throws Exception {
     builder = new ArgBuilder()
-      .addScheduler("org.apache.nemo.runtime.master.scheduler.StreamingScheduler")
+      .addScheduler(StreamingScheduler.class.getCanonicalName())
       .addUserMain(WindowedWordCount.class.getCanonicalName())
       .addUserArgs(outputFilePath, "fixed", INPUT_TYPE_BOUNDED, inputFilePath);
 
@@ -112,7 +113,7 @@ public final class WindowedWordCountITCase {
   @Test(timeout = ExampleTestArgs.TIMEOUT)
   public void testStreamingSchedulerAndPipeSlidingWindow() throws Exception {
     builder = new ArgBuilder()
-      .addScheduler("org.apache.nemo.runtime.master.scheduler.StreamingScheduler")
+      .addScheduler(StreamingScheduler.class.getCanonicalName())
       .addUserMain(WindowedWordCount.class.getCanonicalName())
       .addUserArgs(outputFilePath, "sliding", INPUT_TYPE_BOUNDED, inputFilePath);
 
@@ -133,7 +134,7 @@ public final class WindowedWordCountITCase {
   // @Test (timeout = TIMEOUT)
   public void testUnboundedSlidingWindow() throws Exception {
     builder = new ArgBuilder()
-      .addScheduler("org.apache.nemo.runtime.master.scheduler.StreamingScheduler")
+      .addScheduler(StreamingScheduler.class.getCanonicalName())
       .addUserMain(WindowedWordCount.class.getCanonicalName())
       .addUserArgs(outputFilePath, "sliding", INPUT_TYPE_UNBOUNDED);
 
