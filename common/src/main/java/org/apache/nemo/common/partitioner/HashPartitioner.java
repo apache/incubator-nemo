@@ -45,4 +45,8 @@ public final class HashPartitioner implements Partitioner<Integer> {
   public Integer partition(final Object element) {
     return Math.abs(keyExtractor.extractKey(element).hashCode() % numOfPartitions);
   }
+
+  public Integer partition(final Object element, final int numOfSubPartitions) {
+    return Math.abs(keyExtractor.extractKey(element).hashCode() % numOfSubPartitions);
+  }
 }

@@ -18,7 +18,11 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.ShuffleExecutorSetProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.TaskIndexToExecutorIDProperty;
+import org.apache.nemo.common.partitioner.HashPartitioner;
 import org.apache.nemo.common.partitioner.Partitioner;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
@@ -32,9 +36,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Represents the output data transfer from a task.
@@ -147,6 +151,22 @@ public final class PipeOutputWriter implements OutputWriter {
         return Collections.singletonList(pipes.get(0));
       case BROADCAST:
         return pipes;
+      case PARTIAL_SHUFFLE:
+        final List<Pair<String, String>> listOfSrcNodeNames = ((StageEdge) runtimeEdge).getSrc()
+          .getPropertyValue(TaskIndexToExecutorIDProperty.class).get().get(srcTaskIndex);
+        final String nodeName = listOfSrcNodeNames.get(listOfSrcNodeNames.size() - 1).right();
+
+        final ArrayList<HashSet<String>> setsOfExecutors = ((StageEdge) runtimeEdge).getDst()
+          .getPropertyValue(ShuffleExecutorSetProperty.class).get();
+        final int numOfSets = setsOfExecutors.size();
+        final int dstParallelism = ((StageEdge) runtimeEdge).getDst().getParallelism();
+        final List<Integer> listOfDstTaskIdx = IntStream.range(0, dstParallelism)
+          .filter(i -> setsOfExecutors.get(i % numOfSets).contains(nodeName))
+          .boxed().collect(Collectors.toList());
+
+        final int numOfPartitions = listOfDstTaskIdx.size();
+        final int pipeIndex = listOfDstTaskIdx.get(((HashPartitioner) partitioner).partition(element, numOfPartitions));
+        return Collections.singletonList(pipes.get(pipeIndex));
       default:
         return Collections.singletonList(pipes.get((int) partitioner.partition(element)));
     }
