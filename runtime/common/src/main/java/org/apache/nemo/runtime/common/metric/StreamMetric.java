@@ -32,13 +32,11 @@ public class StreamMetric implements Serializable {
 
 
   /**
-   * Constructor with the designated id.
-   *
    * @param startTimeStamp the starting point from which metric is recorded.
    * @param endTimeStamp the endpoint from which metric is recorded.
    * @param numOfTuples the number of tuples processed between starting point and endpoint.
    * @param serializedReadBytes the number of read bytes processed between starting point and endpoint.
-   *
+   * @param isReadNotSerializedData whether the task read data from local block or not.
    */
   public StreamMetric(final long startTimeStamp,
                       final long endTimeStamp,

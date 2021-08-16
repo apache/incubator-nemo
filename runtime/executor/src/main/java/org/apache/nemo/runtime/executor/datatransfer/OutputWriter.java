@@ -43,6 +43,8 @@ public interface OutputWriter {
 
   /**
    * Writes latencymark to all edges.
+   * It does not consider buffered time in windows.
+   * transfer to the next task immediately.
    *
    * @param latencymark latencymark
    */

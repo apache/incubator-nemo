@@ -164,7 +164,6 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
 
   @Override
   public void onLatencymark(final Latencymark latencymark) {
-    // TODO #298: Consider Processing DoFn PushBacks on Watermark
     checkAndInvokeBundle();
     getOutputCollector().emitLatencymark(latencymark);
     checkAndFinishBundle();

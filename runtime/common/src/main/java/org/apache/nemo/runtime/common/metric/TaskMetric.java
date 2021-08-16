@@ -126,7 +126,7 @@ public class TaskMetric implements StateMetric<TaskState.State> {
   }
 
   /**
-   * Method related to delay.
+   * Method related to latency.
    */
   public final Map<String, List<LatencyMetric>> getLatencymarks() {
     return this.latencymarks;

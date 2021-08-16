@@ -23,17 +23,17 @@ import org.apache.nemo.common.punctuation.Latencymark;
 import java.io.Serializable;
 
 /**
- * Metric class for delay.
+ * Metric class for latency.
  */
 public class LatencyMetric implements Serializable {
   private Latencymark latencymark;
   private long timestamp;
 
   /**
-   * Constructor with the designated id, watermark timestamp and delay.
+   * Constructor with the latencymark and timestamp.
    *
-   * @param latencymark the id.
-   * @param timestamp When an element was created.
+   * @param latencymark the latencymark what task received.
+   * @param timestamp When the latencymark was received.
    */
   public LatencyMetric(final Latencymark latencymark, final long timestamp) {
     this.latencymark = latencymark;
@@ -50,9 +50,9 @@ public class LatencyMetric implements Serializable {
   }
 
   /**
-   * Get the timestamp when the latencymark is recorded.
+   * Get the timestamp when the latencymark is received.
    *
-   * @return timestamp when it is recorded.
+   * @return timestamp when it is received.
    */
   public long getTimestamp() {
     return this.timestamp;

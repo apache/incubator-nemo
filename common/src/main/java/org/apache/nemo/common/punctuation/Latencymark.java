@@ -22,7 +22,8 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Watermark event.
+ * Latency mark is conveyor that has data for debugging purpose.
+ * It is created only from source vertex and record the timestamp when it created and taskId where it created.
  */
 public final class Latencymark implements Serializable {
   private final String createdtaskId;
@@ -30,7 +31,8 @@ public final class Latencymark implements Serializable {
   private final long timestamp;
 
   /**
-   * @param timestamp the watermark timestamp
+   * @param taskId task id where it created
+   * @param timestamp timestamp when it created
    */
   public Latencymark(final String taskId, final long timestamp) {
     this.createdtaskId = taskId;
@@ -39,16 +41,23 @@ public final class Latencymark implements Serializable {
   }
 
   /**
-   * @return the watermark timestamp
+   * @return the latencymark timestamp
    */
   public long getTimestamp() {
     return timestamp;
   }
 
+  /**
+   * @return the task id where it created
+   */
   public String getCreatedtaskId() {
     return createdtaskId;
   }
 
+
+  /**
+   * @return the task id where it delivered from. task id of upstream task
+   */
   public String getLastTaskId() {
     return lastTaskId;
   }

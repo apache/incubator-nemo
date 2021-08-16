@@ -139,7 +139,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
       LOG.debug("{} emits latencymark {}", irVertex.getId(), latencymark);
     }
 
-    // Emit watermarks to internal vertices
+    // Emit latencymark to internal vertices
     for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
       internalVertex.getNextOperator().getTransform().onLatencymark(latencymark);
     }
@@ -150,7 +150,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
       }
     }
 
-    // Emit watermarks to output writer
+    // Emit latencymark to output writer
     for (final OutputWriter outputWriter : externalMainOutputs) {
       outputWriter.writeLatencymark(latencymark);
     }
