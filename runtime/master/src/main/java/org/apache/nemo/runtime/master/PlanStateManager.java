@@ -633,30 +633,33 @@ public final class PlanStateManager {
   public synchronized String toString() {
     final StringBuilder sb = new StringBuilder("{");
     sb.append("\"planId\": \"").append(planId).append("\", ");
-    sb.append("\"stages\": [");
-    boolean isFirstStage = true;
-    for (final Stage stage : physicalPlan.getStageDAG().getVertices()) {
-      if (!isFirstStage) {
-        sb.append(", ");
-      }
-      isFirstStage = false;
-      final StageState stageState = stageIdToState.get(stage.getId());
-      sb.append("{\"id\": \"").append(stage.getId()).append("\", ");
-      sb.append("\"state\": \"").append(stageState.toString()).append("\", ");
-      sb.append("\"tasks\": [");
-
-      boolean isFirstTask = true;
-      for (final Map.Entry<String, TaskState.State> entry : getTaskAttemptIdsToItsState(stage.getId()).entrySet()) {
-        if (!isFirstTask) {
+    if (physicalPlan != null) {
+      sb.append("\"stages\": [");
+      boolean isFirstStage = true;
+      for (final Stage stage : physicalPlan.getStageDAG().getVertices()) {
+        if (!isFirstStage) {
           sb.append(", ");
         }
-        isFirstTask = false;
-        sb.append("{\"id\": \"").append(entry.getKey()).append("\", ");
-        sb.append("\"state\": \"").append(entry.getValue().toString()).append("\"}");
+        isFirstStage = false;
+        final StageState stageState = stageIdToState.get(stage.getId());
+        sb.append("{\"id\": \"").append(stage.getId()).append("\", ");
+        sb.append("\"state\": \"").append(stageState.toString()).append("\", ");
+        sb.append("\"tasks\": [");
+
+        boolean isFirstTask = true;
+        for (final Map.Entry<String, TaskState.State> entry : getTaskAttemptIdsToItsState(stage.getId()).entrySet()) {
+          if (!isFirstTask) {
+            sb.append(", ");
+          }
+          isFirstTask = false;
+          sb.append("{\"id\": \"").append(entry.getKey()).append("\", ");
+          sb.append("\"state\": \"").append(entry.getValue().toString()).append("\"}");
+        }
+        sb.append("]}");
       }
-      sb.append("]}");
+      sb.append("]");
     }
-    sb.append("]}");
+    sb.append("}");
     return sb.toString();
   }
 }
