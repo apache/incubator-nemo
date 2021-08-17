@@ -35,7 +35,7 @@ before_install:
 install: true
 script:
   # the following command line builds the project, runs the tests with coverage
-  - travis_retry mvn clean $GOAL
+  - mvn clean $GOAL
   # Web UI Build
   - pushd webui && npm install && npm test && popd
 cache:
