@@ -88,9 +88,9 @@ public final class BlockInputReader implements InputReader {
       case ONE_TO_ONE:
         return Collections.singletonList(readOneToOne());
       case BROADCAST:
-        return readBroadcast(index -> true);
+        return readBroadcast(index -> true, Optional.empty(), 1);
       case SHUFFLE:
-        return readDataInRange(index -> true);
+        return readDataInRange(index -> true, Optional.empty(), 1);
       default:
         throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
@@ -103,7 +103,7 @@ public final class BlockInputReader implements InputReader {
     if (workStealingState.equals(MERGE_STRATEGY) &&
       srcVertex.getPropertyValue(EnableWorkStealingProperty.class).orElse(DEFAULT_STRATEGY)
         .equals(SPLIT_STRATEGY)) {
-      return readSplitBlocks(InputReader.getSourceParallelism(this),
+      return readSplitBlocks(InputReader.getSourceParallelism(this) / numSubSplit,
         srcVertex.getPropertyValue(WorkStealingSubSplitProperty.class).orElse(1));
     } else {
       List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = read();
@@ -136,9 +136,9 @@ public final class BlockInputReader implements InputReader {
       case ONE_TO_ONE:
         return Collections.singletonList(readOneToOne());
       case BROADCAST:
-        return checkSingleElement(readBroadcast(index -> index == desiredIndex));
+        return readBroadcast(index -> true, Optional.of(srcParallelism), numSubSplit);
       case SHUFFLE:
-        return checkSingleElement(readDataInRange(index -> index == desiredIndex));
+        return readDataInRange(index -> true, Optional.of(srcParallelism), numSubSplit);
       default:
         throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
@@ -204,8 +204,9 @@ public final class BlockInputReader implements InputReader {
   }
 
   private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast(final Predicate<Integer> predicate,
+                                                                               final Optional<Integer> numSrcIndex,
                                                                                final int numSubSplit) {
-    final int numSrcTasks = InputReader.getSourceParallelism(this);
+    final int numSrcTasks = numSrcIndex.orElse(InputReader.getSourceParallelism(this));
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       if (predicate.test(srcTaskIdx)) {
@@ -228,6 +229,7 @@ public final class BlockInputReader implements InputReader {
    * @return the list of the completable future of the data.
    */
   private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange(final Predicate<Integer> predicate,
+                                                                                 final Optional<Integer> numSrcIndex,
                                                                                  final int numSubSplit) {
     assert (runtimeEdge instanceof StageEdge);
     final List<KeyRange> keyRangeList = ((StageEdge) runtimeEdge).getKeyRanges();
@@ -241,7 +243,7 @@ public final class BlockInputReader implements InputReader {
       - ((HashRange) hashRangeToRead).rangeBeginInclusive();
     metricMessageSender.send("TaskMetric", dstTaskId, "taskSizeRatio",
       SerializationUtils.serialize(partitionerProperty / taskSize));
-    final int numSrcTasks = InputReader.getSourceParallelism(this);
+    final int numSrcTasks = numSrcIndex.orElse(InputReader.getSourceParallelism(this));
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       for (int subSplitIdx = 0; subSplitIdx < numSubSplit; subSplitIdx++) {

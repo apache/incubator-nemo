@@ -172,7 +172,7 @@ class ParentTaskDataFetcher extends DataFetcher {
     this.expectedNumOfIterators = futures.size();
     // 여기도 고쳐야 할 듯. index가 기존의 표현이랑 좀 달라지니까.
     for (int i = 0; i < futures.size(); i++) {
-      final int index = i;
+      final int index = translateIndex(i);
       final CompletableFuture<DataUtil.IteratorWithNumBytes> future = futures.get(i);
       future.whenComplete((iterator, exception) -> {
         handleIncomingBlock(index, future);
@@ -211,6 +211,12 @@ class ParentTaskDataFetcher extends DataFetcher {
   }
 
   private int translateIndex(final int index) {
+    if (workStealingState.equals("SPLIT")) {
 
+    } else if (workStealingState.equals("MERGE")) {
+
+    } else {
+      return index;
+    }
   }
 }
