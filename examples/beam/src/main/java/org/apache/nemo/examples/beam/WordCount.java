@@ -59,10 +59,10 @@ public final class WordCount {
    * @return the generated pipeline.
    */
   static Pipeline generateWordCountPipeline(final PipelineOptions options,
-                                                   final String inputFilePath, final String outputFilePath) {
+                                            final String inputFilePath, final String outputFilePath) {
     final Pipeline p = Pipeline.create(options);
     final PCollection<String> result = GenericSourceSink.read(p, inputFilePath)
-      .apply(MapElements.<String, KV<String, Long>>via(new SimpleFunction<String, KV<String, Long>>() {
+      .apply("work stealing", MapElements.<String, KV<String, Long>>via(new SimpleFunction<String, KV<String, Long>>() {
         @Override
         public KV<String, Long> apply(final String line) {
           final String[] words = line.split(" +");

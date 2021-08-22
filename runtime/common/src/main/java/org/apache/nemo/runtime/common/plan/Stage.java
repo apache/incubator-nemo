@@ -42,6 +42,7 @@ import java.util.Optional;
  */
 public final class Stage extends Vertex {
   private final List<Integer> taskIndices;
+  private final int subSplitNum;
   private final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag;
   private final byte[] serializedIRDag;
   private final List<Map<String, Readable>> vertexIdToReadables;
@@ -61,13 +62,15 @@ public final class Stage extends Vertex {
                final List<Integer> taskIndices,
                final DAG<IRVertex, RuntimeEdge<IRVertex>> irDag,
                final ExecutionPropertyMap<VertexExecutionProperty> executionProperties,
-               final List<Map<String, Readable>> vertexIdToReadables) {
+               final List<Map<String, Readable>> vertexIdToReadables,
+               final int subSplitNum) { // 이거 어떻게 설정해줄 수 있는지 생각!!! -> ws용으로 하겠다는 얘기있으면 10으로 하게...
     super(stageId);
     this.taskIndices = taskIndices;
     this.irDag = irDag;
     this.serializedIRDag = SerializationUtils.serialize(irDag);
     this.executionProperties = executionProperties;
     this.vertexIdToReadables = vertexIdToReadables;
+    this.subSplitNum = subSplitNum;
   }
 
   /**
@@ -155,6 +158,9 @@ public final class Stage extends Vertex {
     return vertexIdToReadables;
   }
 
+  public int getSubSplitNum() {
+    return subSplitNum;
+  }
   @Override
   public ObjectNode getPropertiesAsJsonNode() {
     final ObjectNode node = JsonNodeFactory.instance.objectNode();

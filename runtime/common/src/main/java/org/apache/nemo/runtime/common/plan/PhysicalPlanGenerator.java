@@ -213,7 +213,8 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
           taskIndices,
           stageInternalDAG,
           stageProperties,
-          vertexIdToReadables);
+          vertexIdToReadables,
+          1); // ad-hoc for now
         dagOfStagesBuilder.addVertex(stage);
         stageIdToStageMap.put(stageId, stage);
       }

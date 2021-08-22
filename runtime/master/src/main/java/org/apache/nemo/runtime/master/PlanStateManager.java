@@ -185,6 +185,7 @@ public final class PlanStateManager {
    * @return executable task attempts
    */
   public synchronized List<String> getTaskAttemptsToSchedule(final String stageId) {
+    // initialization: 첫번째로 만들어지는케이스를 따로 생각해야 함.
     LOG.error("GET TASK ATTEMPTS TO SCHEDULE at {}", stageId);
     if (getStageState(stageId).equals(StageState.State.COMPLETE)) {
       // This stage is done
@@ -199,6 +200,12 @@ public final class PlanStateManager {
       final List<List<TaskState>> attemptStatesForThisTaskIndex =
         stageIdToTaskIdxToAttemptStates.get(stageId).get(taskIndex);
       LOG.error("partial index size : {}", attemptStatesForThisTaskIndex.size()); // no tasks in here!
+      if (attemptStatesForThisTaskIndex.size() == 0) {
+        // initialize in here
+        for (int i = 0; i < stage.getSubSplitNum(); i++) {
+          attemptStatesForThisTaskIndex.add(new ArrayList<>());
+        }
+      }
       for (List<TaskState> attemptStatesForThisPartialTaskIndex : attemptStatesForThisTaskIndex) {
 
         // If one of the attempts is COMPLETE, do not schedule
