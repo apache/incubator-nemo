@@ -103,7 +103,7 @@ public final class PlanStateManager {
   private MetricStore metricStore;
 
   /**
-   * For dynamic optimization
+   * For dynamic optimization.
    */
   private final int maxSubTaskSplitNum = 10;
 

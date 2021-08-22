@@ -718,7 +718,7 @@ public final class TaskExecutor {
       SerializationUtils.serialize(totalWrittenBytes));
   }
 
-  private String getWorkStealingStrategy(DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
+  private String getWorkStealingStrategy(final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
     Set<String> strategy = irVertexDag.getVertices().stream()
       .map(vertex -> vertex.getPropertyValue(EnableWorkStealingProperty.class).orElse("DEFAULT"))
       .collect(Collectors.toSet());

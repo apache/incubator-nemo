@@ -32,11 +32,11 @@ import org.apache.nemo.runtime.common.plan.StagePartitioner;
 import java.util.*;
 
 /**
- * Optimization pass for tagging parallelism execution property.
+ * Optimization pass for tagging enable work stealing execution property.
  */
 @Annotates(EnableWorkStealingProperty.class)
 @Requires(CommunicationPatternProperty.class)
-public class WorkStealingPass extends AnnotatingPass{
+public final class WorkStealingPass extends AnnotatingPass {
   private static final String SPLIT_STRATEGY = "SPLIT";
   private static final String MERGE_STRATEGY = "MERGE";
   private static final String DEFAULT_STRATEGY = "DEFAULT";
@@ -48,7 +48,7 @@ public class WorkStealingPass extends AnnotatingPass{
   }
 
   @Override
-  public IRDAG apply(IRDAG irdag) {
+  public IRDAG apply(final IRDAG irdag) {
     irdag.topologicalDo(irVertex -> {
       final boolean notConnectedToO2OEdge = irdag.getIncomingEdgesOf(irVertex).stream()
         .map(edge -> edge.getPropertyValue(CommunicationPatternProperty.class).get())
@@ -57,7 +57,7 @@ public class WorkStealingPass extends AnnotatingPass{
         Transform transform = ((OperatorVertex) irVertex).getTransform();
         if (transform.toString().contains("work stealing")) {
           irVertex.setProperty(EnableWorkStealingProperty.of(SPLIT_STRATEGY));
-        } else if (transform.toString().contains("merge")){
+        } else if (transform.toString().contains("merge")) {
           irVertex.setProperty(EnableWorkStealingProperty.of(MERGE_STRATEGY));
         } else {
           irVertex.setProperty(EnableWorkStealingProperty.of(DEFAULT_STRATEGY));
@@ -81,7 +81,7 @@ public class WorkStealingPass extends AnnotatingPass{
    * @param irdag   irdag to cleanup.
    * @return        cleaned irdag.
    */
-  private IRDAG tidyWorkStealingAnnotation(IRDAG irdag) {
+  private IRDAG tidyWorkStealingAnnotation(final IRDAG irdag) {
     String splitVertexId = null;
 
     final List<Pair<String, String>> splitMergePairs = new ArrayList<>();
@@ -108,18 +108,17 @@ public class WorkStealingPass extends AnnotatingPass{
       }
     }
 
-    stagePartitioner.addIgnoredPropertyKey(EnableWorkStealingProperty.class);
     final Map<IRVertex, Integer> vertexToStageId = stagePartitioner.apply(irdag);
 
     for (Pair<String, String> splitMergePair : splitMergePairs) {
       IRVertex splitVertex = irdag.getVertexById(splitMergePair.left());
       IRVertex mergeVertex = irdag.getVertexById(splitMergePair.right());
 
-      if (vertexToStageId.get(splitVertex) >= vertexToStageId.get(mergeVertex) ||
-        irdag.getIncomingEdgesOf(mergeVertex).stream()
-          .map(Edge::getSrc)
-          .map(vertexToStageId::get)
-          .noneMatch(stageId -> stageId.equals(vertexToStageId.get(splitVertex)))) {
+      if (vertexToStageId.get(splitVertex) >= vertexToStageId.get(mergeVertex)
+        || irdag.getIncomingEdgesOf(mergeVertex).stream()
+        .map(Edge::getSrc)
+        .map(vertexToStageId::get)
+        .noneMatch(stageId -> stageId.equals(vertexToStageId.get(splitVertex)))) {
         // split vertex is descendent of merge vertex or they are in the same stage,
         // or they are not in adjacent stages
         splitVertex.setProperty(EnableWorkStealingProperty.of(DEFAULT_STRATEGY));

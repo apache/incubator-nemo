@@ -25,6 +25,8 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.EnableWorkStealingProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.WorkStealingSubSplitProperty;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import java.util.HashMap;
@@ -48,6 +50,14 @@ import java.util.stream.Collectors;
 public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Integer>> {
   private final Set<Class<? extends VertexExecutionProperty>> ignoredPropertyKeys = ConcurrentHashMap.newKeySet();
   private final MutableInt nextStageIndex = new MutableInt(0);
+
+  /**
+   * Default Constructor.
+   */
+  public StagePartitioner() {
+    addIgnoredPropertyKey(EnableWorkStealingProperty.class);
+    addIgnoredPropertyKey(WorkStealingSubSplitProperty.class);
+  }
 
   /**
    * By default, the stage partitioner merges two vertices into one stage if and only if the two vertices have

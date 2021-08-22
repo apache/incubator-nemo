@@ -35,6 +35,7 @@ import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.EnableWorkStealingProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.WorkStealingSubSplitProperty;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
@@ -133,7 +134,6 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
    */
   public DAG<Stage, StageEdge> stagePartitionIrDAG(final IRDAG irDAG) {
     final StagePartitioner stagePartitioner = new StagePartitioner();
-    stagePartitioner.addIgnoredPropertyKey(EnableWorkStealingProperty.class);
 
     final DAGBuilder<Stage, StageEdge> dagOfStagesBuilder = new DAGBuilder<>();
     final Set<IREdge> interStageEdges = new HashSet<>();
@@ -212,16 +212,19 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
         final DAG<IRVertex, RuntimeEdge<IRVertex>> stageInternalDAG
           = stageInternalDAGBuilder.buildWithoutSourceSinkCheck();
         // check if this stage is subject of work stealing optimization
-        boolean isWorkStealingStage = stageInternalDAG.getRootVertices().stream()
+        boolean isWorkStealingStage = stageInternalDAG.getVertices().stream()
           .anyMatch(vertex -> vertex.getPropertyValue(EnableWorkStealingProperty.class)
             .orElse("DEFAULT").equals("SPLIT"));
+        int numSubSplit = stageInternalDAG.getVertices().stream()
+          .mapToInt(v -> v.getPropertyValue(ParallelismProperty.class).orElse(1))
+          .max().orElse(1);
         final Stage stage = new Stage(
           stageIdentifier,
           taskIndices,
           stageInternalDAG,
           stageProperties,
           vertexIdToReadables,
-          isWorkStealingStage ? 10 : 1); // ad-hoc for now
+          isWorkStealingStage ? numSubSplit : 1);
         dagOfStagesBuilder.addVertex(stage);
         stageIdToStageMap.put(stageId, stage);
       }
