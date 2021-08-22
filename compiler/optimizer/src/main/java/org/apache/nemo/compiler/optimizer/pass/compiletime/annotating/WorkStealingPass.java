@@ -11,11 +11,9 @@ import org.apache.nemo.common.ir.vertex.transform.Transform;
 @Annotates(EnableWorkStealingExecutionProperty.class)
 public class WorkStealingPass extends AnnotatingPass{
 
-  private final boolean enableWorkStealing;
 
-  public WorkStealingPass(boolean enableWorkStealing) {
+  public WorkStealingPass() {
     super(WorkStealingPass.class);
-    this.enableWorkStealing = enableWorkStealing;
   }
 
   @Override
@@ -23,8 +21,11 @@ public class WorkStealingPass extends AnnotatingPass{
     irdag.topologicalDo(irVertex -> {
       if (irVertex instanceof OperatorVertex) {
         Transform transform = ((OperatorVertex) irVertex).getTransform();
-
-        irVertex.setProperty(EnableWorkStealingExecutionProperty.of(true));
+        if (transform.toString().contains("work stealing")) {
+          irVertex.setProperty(EnableWorkStealingExecutionProperty.of(true));
+        } else {
+          irVertex.setProperty(EnableWorkStealingExecutionProperty.of(false));
+        }
       }
     });
     return irdag;
