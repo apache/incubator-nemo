@@ -102,8 +102,14 @@ public final class RuntimeIdManager {
    */
   public static String generateBlockId(final String runtimeEdgeId,
                                        final String producerTaskId) {
-    return runtimeEdgeId + SPLITTER + getIndexFromTaskId(producerTaskId)
-      + SPLITTER + getAttemptFromTaskId(producerTaskId);
+    if (isWorkStealingTask(producerTaskId)) {
+      return runtimeEdgeId + SPLITTER + getIndexFromTaskId(producerTaskId)
+        + SPLITTER + getPartialFromTaskId(producerTaskId)
+        + SPLITTER + getAttemptFromTaskId(producerTaskId);
+    } else {
+      return runtimeEdgeId + SPLITTER + getIndexFromTaskId(producerTaskId)
+        + SPLITTER + getAttemptFromTaskId(producerTaskId);
+    }
   }
 
   /**
@@ -121,15 +127,6 @@ public final class RuntimeIdManager {
   public static String generateBlockIdWildcard(final String runtimeEdgeId,
                                                final int producerTaskIndex) {
     return runtimeEdgeId + SPLITTER + producerTaskIndex + SPLITTER + "*";
-  }
-
-  public static String generateWorkStealingBlockId(final String runtimeEdgeId,
-                                                   final String producerTaskId,
-                                                   final String consumerTaskId) {
-    return runtimeEdgeId + SPLITTER + getIndexFromTaskId(producerTaskId)
-      + SPLITTER + getAttemptFromTaskId(producerTaskId)
-      + SPLITTER + getIndexFromTaskId(consumerTaskId)
-      + SPLITTER + getAttemptFromTaskId(consumerTaskId);
   }
 
   /**
