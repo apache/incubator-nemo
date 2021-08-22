@@ -2,13 +2,14 @@ package org.apache.nemo.common.ir.vertex.executionproperty;
 
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
-public class EnableWorkStealingExecutionProperty extends VertexExecutionProperty<Boolean> {
+public class EnableWorkStealingProperty
+  extends VertexExecutionProperty<String> {
   /**
    * Default constructor.
    *
    * @param value value of the VertexExecutionProperty.
    */
-  public EnableWorkStealingExecutionProperty(Boolean value) {
+  public EnableWorkStealingProperty(String value) {
     super(value);
   }
 
@@ -18,7 +19,7 @@ public class EnableWorkStealingExecutionProperty extends VertexExecutionProperty
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static EnableDynamicTaskSizingProperty of(final Boolean value) {
-    return new EnableDynamicTaskSizingProperty(value);
+  public static EnableWorkStealingProperty of(final String value) {
+    return new EnableWorkStealingProperty(value);
   }
 }

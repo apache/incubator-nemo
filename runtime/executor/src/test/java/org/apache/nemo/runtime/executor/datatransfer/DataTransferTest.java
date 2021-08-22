@@ -532,7 +532,8 @@ public final class DataTransferTest {
       IntStream.range(0, PARALLELISM_TEN).boxed().collect(Collectors.toList()),
       emptyDag,
       stageExecutionProperty,
-      Collections.emptyList(), 0);
+      Collections.emptyList(),
+      1);
   }
 
   /**

@@ -1,8 +1,6 @@
 package org.apache.nemo.compiler.optimizer.policy;
 
-import com.sun.corba.se.spi.orbutil.threadpool.Work;
 import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.common.ir.vertex.executionproperty.EnableWorkStealingExecutionProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.WorkStealingPass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.DefaultCompositePass;
 import org.apache.nemo.compiler.optimizer.pass.runtime.Message;

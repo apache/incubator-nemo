@@ -103,6 +103,11 @@ public final class PlanStateManager {
   private MetricStore metricStore;
 
   /**
+   * For dynamic optimization
+   */
+  private final int maxSubTaskSplitNum = 10;
+
+  /**
    * Constructor.
    */
   @Inject
@@ -170,7 +175,7 @@ public final class PlanStateManager {
 
       // for each task idx of this stage
       stage.getTaskIndices().forEach(taskIndex ->
-        stageIdToTaskIdxToAttemptStates.get(stage.getId()).putIfAbsent(taskIndex, new ArrayList<>(10)));
+        stageIdToTaskIdxToAttemptStates.get(stage.getId()).putIfAbsent(taskIndex, new ArrayList<>(maxSubTaskSplitNum)));
         // task states will be initialized lazily in getTaskAttemptsToSchedule()
     });
   }
@@ -365,6 +370,7 @@ public final class PlanStateManager {
       })
       .count();
     if (newTaskState.equals(TaskState.State.COMPLETE)) {
+      // 여기 나중에 고쳐야 함
       LOG.info("{} completed: {} Task(s) out of {} are remaining in this stage",
         taskId, taskStatesOfThisStage.size() - numOfCompletedTaskIndicesInThisStage, taskStatesOfThisStage.size());
     }
@@ -389,7 +395,7 @@ public final class PlanStateManager {
         }
         break;
 
-      // COMPLETE stage
+      // COMPLETE stage 여기도 고쳐야 함
       case COMPLETE:
       case ON_HOLD:
         if (numOfCompletedTaskIndicesInThisStage

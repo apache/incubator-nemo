@@ -32,6 +32,7 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.EnableWorkStealingProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
@@ -208,13 +209,17 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
       if (!stageInternalDAGBuilder.isEmpty()) {
         final DAG<IRVertex, RuntimeEdge<IRVertex>> stageInternalDAG
           = stageInternalDAGBuilder.buildWithoutSourceSinkCheck();
+        // check if this stage is subject of work stealing optimization
+        boolean isWorkStealingStage = stageInternalDAG.getRootVertices().stream()
+          .anyMatch(vertex -> vertex.getPropertyValue(EnableWorkStealingProperty.class)
+            .orElse("DEFAULT").equals("SPLIT"));
         final Stage stage = new Stage(
           stageIdentifier,
           taskIndices,
           stageInternalDAG,
           stageProperties,
           vertexIdToReadables,
-          1); // ad-hoc for now
+          isWorkStealingStage? 10 : 1); // ad-hoc for now
         dagOfStagesBuilder.addVertex(stage);
         stageIdToStageMap.put(stageId, stage);
       }

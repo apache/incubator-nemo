@@ -54,7 +54,7 @@ class ParentTaskDataFetcher extends DataFetcher {
   private long encodedBytes = 0;
 
   private final int magicSplitNum = 10;
-  private final boolean enableWorkStealing = true;
+  private final boolean enableWorkStealing;
 
 
   ParentTaskDataFetcher(final IRVertex dataSource,
@@ -67,6 +67,8 @@ class ParentTaskDataFetcher extends DataFetcher {
     this.firstFetch = true;
     this.currentIteratorIndex = 0;
     this.iteratorQueue = new LinkedBlockingQueue<>();
+
+    this.enableWorkStealing = RuntimeIdManager.isWorkStealingTask(taskId);
   }
 
   @Override

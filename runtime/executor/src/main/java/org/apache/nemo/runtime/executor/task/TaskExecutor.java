@@ -30,6 +30,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagPrope
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.EnableWorkStealingProperty;
 import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.SignalTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
@@ -82,6 +83,7 @@ public final class TaskExecutor {
 
   // Dynamic optimization
   private String idOfVertexPutOnHold;
+  private String workStealingStrategy;
 
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
@@ -120,6 +122,7 @@ public final class TaskExecutor {
 
     // Prepare data structures
     final Pair<List<DataFetcher>, List<VertexHarness>> pair = prepare(task, irVertexDag, intermediateDataIOFactory);
+    this.workStealingStrategy = getWorkStealingStrategy(irVertexDag);
     this.dataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
 
@@ -713,5 +716,18 @@ public final class TaskExecutor {
     // TODO #236: Decouple metric collection and sending logic
     metricMessageSender.send(TASK_METRIC_ID, taskId, "taskOutputBytes",
       SerializationUtils.serialize(totalWrittenBytes));
+  }
+
+  private String getWorkStealingStrategy(DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
+    Set<String> strategy = irVertexDag.getVertices().stream()
+      .map(vertex -> vertex.getPropertyValue(EnableWorkStealingProperty.class).orElse("DEFAULT"))
+      .collect(Collectors.toSet());
+    if (strategy.contains("SPLIT")) {
+      return "SPLIT";
+    } else if (strategy.contains("MERGE")) {
+      return "MERGE";
+    } else {
+      return "DEFAULT";
+    }
   }
 }
