@@ -27,6 +27,7 @@ import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.InputReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.management.snmp.jvmmib.EnumJvmMemPoolThreshdSupport;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
@@ -147,7 +148,8 @@ class ParentTaskDataFetcher extends DataFetcher {
               inputReader.getSrcIrVertex().getId(), index);
             final int twoSecondsInMs =  2 * 1000;
             Thread.sleep(twoSecondsInMs);
-            final CompletableFuture<DataUtil.IteratorWithNumBytes> retryFuture = inputReader.retry(index);
+            final CompletableFuture<DataUtil.IteratorWithNumBytes> retryFuture = inputReader.retry(
+              workStealingState, subSplitNum, index);
             handleIncomingBlock(index, retryFuture);
           } else if (fetchFailure.equals(BlockFetchFailureProperty.Value.CANCEL_TASK)) {
             // Retry the entire task
@@ -172,7 +174,7 @@ class ParentTaskDataFetcher extends DataFetcher {
     this.expectedNumOfIterators = futures.size();
     // 여기도 고쳐야 할 듯. index가 기존의 표현이랑 좀 달라지니까.
     for (int i = 0; i < futures.size(); i++) {
-      final int index = translateIndex(i);
+      final int index = i; // 여기 더이상 고칠 필요 없는데 원래 뭐였는지 체크
       final CompletableFuture<DataUtil.IteratorWithNumBytes> future = futures.get(i);
       future.whenComplete((iterator, exception) -> {
         handleIncomingBlock(index, future);
@@ -208,15 +210,5 @@ class ParentTaskDataFetcher extends DataFetcher {
   @Override
   public void close() throws Exception {
 
-  }
-
-  private int translateIndex(final int index) {
-    if (workStealingState.equals("SPLIT")) {
-
-    } else if (workStealingState.equals("MERGE")) {
-
-    } else {
-      return index;
-    }
   }
 }

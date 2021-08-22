@@ -54,6 +54,17 @@ public interface InputReader {
    */
   CompletableFuture<DataUtil.IteratorWithNumBytes> retry(int index);
 
+  /**
+   * Retry reading input data during work stealing.
+   * @param workStealingState work stealing state (SPLIT, MERGE, DEFAULT)
+   * @param numSubSplit number of sub-splits in SPLIT state, default by 1 in other states.
+   * @param index of the failed iterator in the list returned by read().
+   * @return the retried iterator.
+   */
+  CompletableFuture<DataUtil.IteratorWithNumBytes> retry(String workStealingState,
+                                                         int numSubSplit,
+                                                         int index);
+
   IRVertex getSrcIrVertex();
 
   ExecutionPropertyMap<EdgeExecutionProperty> getProperties();
