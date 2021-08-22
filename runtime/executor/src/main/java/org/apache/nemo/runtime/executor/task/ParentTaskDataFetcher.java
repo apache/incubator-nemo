@@ -53,22 +53,24 @@ class ParentTaskDataFetcher extends DataFetcher {
   private long serBytes = 0;
   private long encodedBytes = 0;
 
-  private final int magicSplitNum = 10;
-  private final boolean enableWorkStealing;
+  private final int subSplitNum;
+  private final String workStealingState;
 
 
   ParentTaskDataFetcher(final IRVertex dataSource,
                         final InputReader inputReader,
                         final OutputCollector outputCollector,
+                        final String workStealingState,
+                        final int subSplitNum,
                         final String taskId) {
     super(dataSource, outputCollector);
-    this.inputReader = inputReader;
     this.taskId = taskId;
+    this.inputReader = inputReader;
+    this.workStealingState = workStealingState;
+    this.subSplitNum = subSplitNum;
     this.firstFetch = true;
     this.currentIteratorIndex = 0;
     this.iteratorQueue = new LinkedBlockingQueue<>();
-
-    this.enableWorkStealing = RuntimeIdManager.isWorkStealingTask(taskId);
   }
 
   @Override
@@ -166,8 +168,9 @@ class ParentTaskDataFetcher extends DataFetcher {
 
   private void fetchDataLazily() {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = inputReader
-      .read(enableWorkStealing, magicSplitNum, RuntimeIdManager.getPartialFromTaskId(taskId));
+      .read(workStealingState, subSplitNum, RuntimeIdManager.getPartialFromTaskId(taskId));
     this.expectedNumOfIterators = futures.size();
+    // 여기도 고쳐야 할 듯. index가 기존의 표현이랑 좀 달라지니까.
     for (int i = 0; i < futures.size(); i++) {
       final int index = i;
       final CompletableFuture<DataUtil.IteratorWithNumBytes> future = futures.get(i);
@@ -204,6 +207,10 @@ class ParentTaskDataFetcher extends DataFetcher {
 
   @Override
   public void close() throws Exception {
+
+  }
+
+  private int translateIndex(final int index) {
 
   }
 }

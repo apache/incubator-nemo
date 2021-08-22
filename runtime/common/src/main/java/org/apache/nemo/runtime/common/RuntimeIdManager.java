@@ -125,8 +125,15 @@ public final class RuntimeIdManager {
    * @return the generated WILDCARD ID
    */
   public static String generateBlockIdWildcard(final String runtimeEdgeId,
-                                               final int producerTaskIndex) {
-    return runtimeEdgeId + SPLITTER + producerTaskIndex + SPLITTER + "*";
+                                               final int producerTaskIndex,
+                                               final String subSplitIndex) {
+    if (!subSplitIndex.equals("*")) {
+      return runtimeEdgeId + SPLITTER + producerTaskIndex
+        + SPLITTER + subSplitIndex + SPLITTER + "*";
+    } else {
+      return runtimeEdgeId + SPLITTER + producerTaskIndex + SPLITTER + "*";
+    }
+
   }
 
   /**
@@ -139,6 +146,9 @@ public final class RuntimeIdManager {
   }
 
   //////////////////////////////////////////////////////////////// Parse IDs
+  public static boolean isWorkStealingBlock(final String blockId) {
+    return split(blockId).length == 4;
+  }
 
   /**
    * Extracts runtime edge ID from a block ID.
@@ -161,13 +171,26 @@ public final class RuntimeIdManager {
   }
 
   /**
+   *
+   */
+  public static String getSubSplitIndexFromBlockId(final String blockId) {
+    if (isWorkStealingBlock(blockId)) {
+      return split(blockId)[2];
+    } else {
+      return "*";
+    }
+  }
+
+  /**
    * Extracts wild card from a block ID.
    *
    * @param blockId the block ID to extract.
    * @return the wild card.
    */
   public static String getWildCardFromBlockId(final String blockId) {
-    return generateBlockIdWildcard(getRuntimeEdgeIdFromBlockId(blockId), getTaskIndexFromBlockId(blockId));
+    return generateBlockIdWildcard(getRuntimeEdgeIdFromBlockId(blockId),
+      getTaskIndexFromBlockId(blockId),
+      getSubSplitIndexFromBlockId(blockId));
   }
 
   /**

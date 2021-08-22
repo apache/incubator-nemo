@@ -31,6 +31,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.EnableWorkStealingProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.WorkStealingSubSplitProperty;
 import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.SignalTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
@@ -290,11 +291,21 @@ public final class TaskExecutor {
                   parentTaskReader,
                   dataFetcherOutputCollector));
             } else {
+              final String workStealingState = irVertexDag.getVertices().stream()
+                .map(v -> v.getPropertyValue(EnableWorkStealingProperty.class).orElse("DEFAULT"))
+                .filter(s -> !s.equals("DEFAULT"))
+                .findFirst().orElse("DEFAULT");
+              final int numSubSplit = irVertexDag.getVertices().stream()
+                .mapToInt(v -> v.getPropertyValue(WorkStealingSubSplitProperty.class).orElse(1))
+                .max().orElse(1);
               dataFetcherList.add(
                 new ParentTaskDataFetcher(
                   parentTaskReader.getSrcIrVertex(),
                   parentTaskReader,
-                  dataFetcherOutputCollector, taskId));
+                  dataFetcherOutputCollector,
+                  workStealingState,
+                  numSubSplit,
+                  taskId));
             }
           }
         });

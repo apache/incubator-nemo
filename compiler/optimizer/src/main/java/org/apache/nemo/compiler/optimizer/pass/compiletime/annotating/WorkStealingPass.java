@@ -86,6 +86,7 @@ public final class WorkStealingPass extends AnnotatingPass {
 
     final List<Pair<String, String>> splitMergePairs = new ArrayList<>();
     final Set<String> pairedVertices = new HashSet<>();
+    final Map<Integer, Set<IRVertex>> stageIdToStageVertices = new HashMap<>();
 
     // Make SPLIT - MERGE vertex pair.
     for (IRVertex vertex : irdag.getTopologicalSort()) {
@@ -136,6 +137,24 @@ public final class WorkStealingPass extends AnnotatingPass {
         }
       }
     });
+
+    // update execution property of other vertices in same stage.
+    vertexToStageId.forEach((vertex, stageId) -> {
+      if (!stageIdToStageVertices.containsKey(stageId)) {
+        stageIdToStageVertices.put(stageId, new HashSet<>());
+      }
+      stageIdToStageVertices.get(stageId).add(vertex);
+    });
+
+    for (String vertexId : pairedVertices) {
+      IRVertex vertex = irdag.getVertexById(vertexId);
+      Set<IRVertex> stageVertices = stageIdToStageVertices.get(vertexToStageId.get(vertex));
+      String strategy = vertex.getPropertyValue(EnableWorkStealingProperty.class)
+        .orElse(DEFAULT_STRATEGY);
+      for (IRVertex stageVertex : stageVertices) {
+        stageVertex.setProperty(EnableWorkStealingProperty.of(strategy));
+      }
+    }
 
     return irdag;
   }
