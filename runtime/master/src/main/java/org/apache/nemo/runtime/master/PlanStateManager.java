@@ -371,8 +371,10 @@ public final class PlanStateManager {
       .count();
     if (newTaskState.equals(TaskState.State.COMPLETE)) {
       // 여기 나중에 고쳐야 함
+      final int numOfTasksOfThisStage = taskStatesOfThisStage.values().stream()
+        .mapToInt(partialTasks -> partialTasks.size()).sum();
       LOG.info("{} completed: {} Task(s) out of {} are remaining in this stage",
-        taskId, taskStatesOfThisStage.size() - numOfCompletedTaskIndicesInThisStage, taskStatesOfThisStage.size());
+        taskId, numOfTasksOfThisStage - numOfCompletedTaskIndicesInThisStage, numOfTasksOfThisStage);
     }
 
     // Maintain info for speculative execution

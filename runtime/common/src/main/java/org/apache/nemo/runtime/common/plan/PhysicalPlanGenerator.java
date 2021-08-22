@@ -133,6 +133,8 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
    */
   public DAG<Stage, StageEdge> stagePartitionIrDAG(final IRDAG irDAG) {
     final StagePartitioner stagePartitioner = new StagePartitioner();
+    stagePartitioner.addIgnoredPropertyKey(EnableWorkStealingProperty.class);
+
     final DAGBuilder<Stage, StageEdge> dagOfStagesBuilder = new DAGBuilder<>();
     final Set<IREdge> interStageEdges = new HashSet<>();
     final Map<Integer, Stage> stageIdToStageMap = new HashMap<>();
@@ -219,7 +221,7 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
           stageInternalDAG,
           stageProperties,
           vertexIdToReadables,
-          isWorkStealingStage? 10 : 1); // ad-hoc for now
+          isWorkStealingStage ? 10 : 1); // ad-hoc for now
         dagOfStagesBuilder.addVertex(stage);
         stageIdToStageMap.put(stageId, stage);
       }
