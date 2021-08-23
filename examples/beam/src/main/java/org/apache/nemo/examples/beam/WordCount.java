@@ -47,17 +47,9 @@ public final class WordCount {
     final String outputFilePath = args[1];
     final PipelineOptions options = NemoPipelineOptionsFactory.create();
 
-    //final boolean enableWorkStealing = true;
     options.setJobName("WordCount");
 
     final Pipeline p = generateWordCountPipeline(options, inputFilePath, outputFilePath);
-    /**
-    if (enableWorkStealing) {
-      p = generateWordCountPipelineWS(options, inputFilePath, outputFilePath);
-    } else {
-      p = generateWordCountPipeline(options, inputFilePath, outputFilePath);
-    }
-    */
     p.run().waitUntilFinish();
   }
 
@@ -70,38 +62,6 @@ public final class WordCount {
    */
   static Pipeline generateWordCountPipeline(final PipelineOptions options,
                                             final String inputFilePath, final String outputFilePath) {
-    final Pipeline p = Pipeline.create(options);
-    final PCollection<String> result = GenericSourceSink.read(p, inputFilePath)
-      .apply(MapElements.<String, KV<String, Long>>via(new SimpleFunction<String, KV<String, Long>>() {
-        @Override
-        public KV<String, Long> apply(final String line) {
-          final String[] words = line.split(" +");
-          final String documentId = words[0] + "#" + words[1];
-          final Long count = Long.parseLong(words[2]);
-          return KV.of(documentId, count);
-        }
-      }))
-      .apply("work stealing", Sum.longsPerKey())
-      .apply("merge", Sum.longsPerKey())
-      .apply(MapElements.<KV<String, Long>, String>via(new SimpleFunction<KV<String, Long>, String>() {
-        @Override
-        public String apply(final KV<String, Long> kv) {
-          return kv.getKey() + ": " + kv.getValue();
-        }
-      }));
-    GenericSourceSink.write(result, outputFilePath);
-    return p;
-  }
-
-  /**
-   * Static method to generate the word count Beam pipeline. (work stealing version)
-   * @param options options for the pipeline.
-   * @param inputFilePath the input file path.
-   * @param outputFilePath the output file path.
-   * @return the generated pipeline.
-   */
-  static Pipeline generateWordCountPipelineWS(final PipelineOptions options,
-                                              final String inputFilePath, final String outputFilePath) {
     final Pipeline p = Pipeline.create(options);
     final PCollection<String> result = GenericSourceSink.read(p, inputFilePath)
       .apply(MapElements.<String, KV<String, Long>>via(new SimpleFunction<String, KV<String, Long>>() {
