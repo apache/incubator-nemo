@@ -161,6 +161,7 @@ public final class Stage extends Vertex {
   public int getSubSplitNum() {
     return subSplitNum;
   }
+
   @Override
   public ObjectNode getPropertiesAsJsonNode() {
     final ObjectNode node = JsonNodeFactory.instance.objectNode();

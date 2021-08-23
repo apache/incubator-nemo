@@ -105,7 +105,7 @@ public final class PlanStateManager {
   /**
    * For dynamic optimization.
    */
-  private final int maxSubTaskSplitNum = 10;
+  private final int maxSubTaskSplitNum = 5;
 
   /**
    * Constructor.
@@ -204,8 +204,9 @@ public final class PlanStateManager {
       LOG.error("{} task index {}", stageId, taskIndex);
       final List<List<TaskState>> attemptStatesPerPartialTaskForThisTaskIndex =
         stageIdToTaskIdxToAttemptStates.get(stageId).get(taskIndex);
-      LOG.error("partial index size : {}", attemptStatesPerPartialTaskForThisTaskIndex.size()); // no tasks in here!
+      LOG.error("partial index size : {}", attemptStatesPerPartialTaskForThisTaskIndex.size());
       if (attemptStatesPerPartialTaskForThisTaskIndex.size() == 0) {
+        LOG.error("in initialization stage: {}", stage.getSubSplitNum());
         // initialize in here
         for (int i = 0; i < stage.getSubSplitNum(); i++) {
           attemptStatesPerPartialTaskForThisTaskIndex.add(new ArrayList<>());
@@ -401,8 +402,9 @@ public final class PlanStateManager {
       // COMPLETE stage 여기도 고쳐야 함
       case COMPLETE:
       case ON_HOLD:
+        Stage currentStage = physicalPlan.getStageDAG().getVertexById(stageId);
         if (numOfCompletedTaskIndicesInThisStage
-          == physicalPlan.getStageDAG().getVertexById(stageId).getTaskIndices().size()) {
+          == (long) currentStage.getTaskIndices().size() * currentStage.getSubSplitNum()) {
           onStageStateChanged(stageId, StageState.State.COMPLETE);
         }
         break;
@@ -425,6 +427,7 @@ public final class PlanStateManager {
    * @param newStageState of the stage.
    */
   private void onStageStateChanged(final String stageId, final StageState.State newStageState) {
+    LOG.error("{} completed", stageId);
     // Change stage state
     final StateMachine stageStateMachine = stageIdToState.get(stageId).getStateMachine();
 

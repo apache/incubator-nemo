@@ -113,16 +113,21 @@ public final class BlockInputReader implements InputReader {
 
       if (!workStealingState.equals(SPLIT_STRATEGY)) {
         /* DEFAULT case */
+        LOG.error("DEFAULT CASE: size {}", futures.size());
         return futures;
       }
 
       /* SPLIT case*/
       // 가능한 even 하게 나누는 방법 생각해서 보완
       // 19를 10개로 나누는 건 1*9, 10*1 보다는 2*9, 1*1 이 나음'
-      return futures.subList(subSplitIndex * (futures.size() / numSubSplit),
-        Math.min((subSplitIndex + 1) * (futures.size() / numSubSplit), futures.size()));
+      final int leftInterval = subSplitIndex * (futures.size() / numSubSplit);
+      final int rightInterval = numSubSplit == subSplitIndex + 1
+        ? futures.size() : (subSplitIndex + 1) * (futures.size() / numSubSplit);
+      LOG.error("SPLIT CASE: future.size: {}", futures.size());
+      LOG.error("SPLIT CASE: numSubSplit, index: {}, {}", numSubSplit, subSplitIndex);
+      LOG.error("SPLIT CASE: [{}, {})", leftInterval, rightInterval);
+      return futures.subList(leftInterval, rightInterval);
     }
-
   }
 
 
@@ -171,11 +176,11 @@ public final class BlockInputReader implements InputReader {
         return readOneToOne();
       case BROADCAST:
         return readBroadcast(index -> index == trueIndex,
-          isMergeAfterSplit ? Optional.of(srcParallelism / srcNumSubSplit) : Optional.empty(),
+          isMergeAfterSplit ? Optional.of(srcParallelism) : Optional.empty(),
           isMergeAfterSplit ? srcNumSubSplit : 1).get(subIndex);
       case SHUFFLE:
         return readDataInRange(index -> index == trueIndex,
-          isMergeAfterSplit ? Optional.of(srcParallelism / srcNumSubSplit) : Optional.empty(),
+          isMergeAfterSplit ? Optional.of(srcParallelism) : Optional.empty(),
           isMergeAfterSplit ? srcNumSubSplit : 1).get(subIndex);
       default:
         throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
@@ -208,7 +213,6 @@ public final class BlockInputReader implements InputReader {
    */
   private String generateWildCardBlockId(final int producerTaskIndex,
                                          final String subSplitIndex) {
-    LOG.error("");
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
       runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     if (!duplicateDataProperty.isPresent() || duplicateDataProperty.get().getGroupSize() <= 1) {
@@ -300,9 +304,9 @@ public final class BlockInputReader implements InputReader {
       case ONE_TO_ONE:
         return Collections.singletonList(readOneToOne());
       case BROADCAST:
-        return readBroadcast(index -> true, Optional.of(srcParallelism / srcNumSubSplit), srcNumSubSplit);
+        return readBroadcast(index -> true, Optional.of(srcParallelism), srcNumSubSplit);
       case SHUFFLE:
-        return readDataInRange(index -> true, Optional.of(srcParallelism / srcNumSubSplit), srcNumSubSplit);
+        return readDataInRange(index -> true, Optional.of(srcParallelism), srcNumSubSplit);
       default:
         throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }

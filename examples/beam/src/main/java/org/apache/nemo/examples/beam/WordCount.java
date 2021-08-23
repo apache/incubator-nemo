@@ -75,7 +75,8 @@ public final class WordCount {
       }))
       .apply("work stealing", Sum.longsPerKey())
       .apply("merge", Sum.longsPerKey())
-      .apply(MapElements.<KV<String, Long>, String>via(new SimpleFunction<KV<String, Long>, String>() {
+      .apply("test work stealing", MapElements.<KV<String, Long>, String>via(
+        new SimpleFunction<KV<String, Long>, String>() {
         @Override
         public String apply(final KV<String, Long> kv) {
           return kv.getKey() + ": " + kv.getValue();

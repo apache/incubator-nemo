@@ -350,6 +350,7 @@ final class PipelineTranslator {
     final PTransform<?, ?> transform) {
 
     final Combine.PerKey perKey = (Combine.PerKey) transform;
+    final String fullName = beamNode.getFullName();
 
     // If there's any side inputs, translate each primitive transforms in this composite transform one by one.
     if (!perKey.getSideInputs().isEmpty()) {
@@ -382,8 +383,8 @@ final class PipelineTranslator {
     // Choose between batch processing and stream processing based on window type and boundedness of data
     if (isMainInputBounded(beamNode, ctx.getPipeline()) && isGlobalWindow(beamNode, ctx.getPipeline())) {
       // Batch processing, using CombinePartialTransform and CombineFinalTransform
-      partialCombine = new OperatorVertex(new CombineFnPartialTransform<>(combineFn));
-      finalCombine = new OperatorVertex(new CombineFnFinalTransform<>(combineFn));
+      partialCombine = new OperatorVertex(new CombineFnPartialTransform<>(combineFn), fullName);
+      finalCombine = new OperatorVertex(new CombineFnFinalTransform<>(combineFn), fullName);
     } else {
       // Stream data processing, using GBKTransform
       final AppliedPTransform pTransform = beamNode.toAppliedPTransform(ctx.getPipeline());
