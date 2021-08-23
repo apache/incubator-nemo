@@ -18,10 +18,12 @@
  */
 package org.apache.nemo.runtime.executor.task;
 
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.executionproperty.BlockFetchFailureProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
+import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.InputReader;
 import org.slf4j.Logger;
@@ -32,6 +34,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Fetches data from parent tasks.
@@ -51,14 +55,21 @@ class ParentTaskDataFetcher extends DataFetcher {
   private long serBytes = 0;
   private long encodedBytes = 0;
 
+  private AtomicInteger iteratorStartIndex;
+  private AtomicInteger iteratorEndIndex;
+
   ParentTaskDataFetcher(final IRVertex dataSource,
                         final InputReader inputReader,
-                        final OutputCollector outputCollector) {
+                        final OutputCollector outputCollector,
+                        final AtomicInteger iteratorStartIndex,
+                        final AtomicInteger iteratorEndIndex) {
     super(dataSource, outputCollector);
     this.inputReader = inputReader;
     this.firstFetch = true;
     this.currentIteratorIndex = 0;
     this.iteratorQueue = new LinkedBlockingQueue<>();
+    this.iteratorStartIndex = iteratorStartIndex;
+    this.iteratorEndIndex = iteratorEndIndex;
   }
 
   @Override
@@ -80,6 +91,63 @@ class ParentTaskDataFetcher extends DataFetcher {
         if (currentIteratorIndex < expectedNumOfIterators) {
           // Next iterator has the element
           countBytes(currentIterator);
+          advanceIterator();
+          continue;
+        } else {
+          // We've consumed all the iterators
+          break;
+        }
+
+      }
+    } catch (final Throwable e) {
+      // Any failure is caught and thrown as an IOException, so that the task is retried.
+      // In particular, we catch unchecked exceptions like RuntimeException thrown by DataUtil.IteratorWithNumBytes
+      // when remote data fetching fails for whatever reason.
+      // Note that we rely on unchecked exceptions because the Iterator interface does not provide the standard
+      // "throw Exception" that the TaskExecutor thread can catch and handle.
+      throw new IOException(e);
+    }
+
+    return Finishmark.getInstance();
+  }
+
+  @Override
+  Object fetchDataElementWithTrace(final String taskId,
+                                   final MetricMessageSender metricMessageSender,
+                                   final AtomicBoolean onHold) throws IOException {
+    try {
+      if (firstFetch) {
+        fetchDataLazily();
+        advanceIterator();
+
+        // if this a work stealing task, move the iterator index to its starting point
+        while (currentIteratorIndex < iteratorStartIndex.get()) {
+          advanceIterator();
+        }
+        firstFetch = false;
+      }
+
+      while (!onHold.get()) {
+        // This iterator has the element
+        if (this.currentIterator.hasNext()) {
+          return this.currentIterator.next();
+        }
+
+        // This iterator does not have the element
+        if (currentIteratorIndex >= iteratorEndIndex.get()) {
+          break;
+        }
+        if (currentIteratorIndex < expectedNumOfIterators) {
+          // Next iterator has the element
+          countBytes(currentIterator);
+          // Send the cumulative serBytes to MetricStore
+          metricMessageSender.send("TaskMetric", taskId, "serializedReadBytes",
+            SerializationUtils.serialize(serBytes));
+          metricMessageSender.send("TaksMetric", taskId, "currentIteratorIndex",
+            SerializationUtils.serialize(currentIteratorIndex));
+          metricMessageSender.send("TaskMetric", taskId, "totalIteratorNumber",
+            SerializationUtils.serialize(expectedNumOfIterators));
+          metricMessageSender.flush();
           advanceIterator();
           continue;
         } else {
@@ -157,6 +225,9 @@ class ParentTaskDataFetcher extends DataFetcher {
   private void fetchDataLazily() {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = inputReader.read();
     this.expectedNumOfIterators = futures.size();
+    if (iteratorEndIndex.get() > expectedNumOfIterators) {
+      iteratorEndIndex.set(expectedNumOfIterators);
+    }
     for (int i = 0; i < futures.size(); i++) {
       final int index = i;
       final CompletableFuture<DataUtil.IteratorWithNumBytes> future = futures.get(i);

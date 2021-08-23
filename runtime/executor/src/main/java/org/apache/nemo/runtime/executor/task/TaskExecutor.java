@@ -19,6 +19,7 @@
 package org.apache.nemo.runtime.executor.task;
 
 import com.google.common.collect.Lists;
+import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.nemo.common.Pair;
@@ -54,6 +55,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 /**
@@ -82,6 +84,7 @@ public final class TaskExecutor {
 
   // Dynamic optimization
   private String idOfVertexPutOnHold;
+  private final AtomicBoolean onHold;
 
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap;
 
@@ -102,8 +105,10 @@ public final class TaskExecutor {
                       final IntermediateDataIOFactory intermediateDataIOFactory,
                       final BroadcastManagerWorker broadcastManagerWorker,
                       final MetricMessageSender metricMessageSender,
-                      final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
+                      final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
+                      final AtomicBoolean onHold) {
     // Essential information
+    final long taskPrepareStart = System.currentTimeMillis();
     this.isExecuted = false;
     this.taskId = task.getTaskId();
     this.taskStateManager = taskStateManager;
@@ -115,6 +120,7 @@ public final class TaskExecutor {
     // Dynamic optimization
     // Assigning null is very bad, but we are keeping this for now
     this.idOfVertexPutOnHold = null;
+    this.onHold = onHold;
 
     this.persistentConnectionToMasterMap = persistentConnectionToMasterMap;
 
@@ -124,6 +130,8 @@ public final class TaskExecutor {
     this.sortedHarnesses = pair.right();
 
     this.timeSinceLastExecution = System.currentTimeMillis();
+    metricMessageSender.send("TaskMetric", taskId, "taskPreparationTime",
+      SerializationUtils.serialize(System.currentTimeMillis() - taskPrepareStart));
   }
 
   // Get all of the intra-task edges + inter-task edges
@@ -291,7 +299,9 @@ public final class TaskExecutor {
                 new ParentTaskDataFetcher(
                   parentTaskReader.getSrcIrVertex(),
                   parentTaskReader,
-                  dataFetcherOutputCollector));
+                  dataFetcherOutputCollector,
+                  task.getIteratorStartIndex(),
+                  task.getIteratorEndIndex()));
             }
           }
         });
@@ -458,7 +468,7 @@ public final class TaskExecutor {
       while (availableIterator.hasNext()) {
         final DataFetcher dataFetcher = availableIterator.next();
         try {
-          final Object element = dataFetcher.fetchDataElement();
+          final Object element = dataFetcher.fetchDataElementWithTrace(taskId, metricMessageSender, onHold);
           onEventFromDataFetcher(element, dataFetcher);
           if (element instanceof Finishmark) {
             availableIterator.remove();
@@ -688,12 +698,21 @@ public final class TaskExecutor {
    */
   private void finalizeOutputWriters(final VertexHarness vertexHarness) {
     final List<Long> writtenBytesList = new ArrayList<>();
+    final HashMap<Integer, Long> partitionSizeMap = new HashMap<>();
 
     // finalize OutputWriters for main children
     vertexHarness.getWritersToMainChildrenTasks().forEach(outputWriter -> {
       outputWriter.close();
       final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
       writtenBytes.ifPresent(writtenBytesList::add);
+
+      // Send partitionSizeMap to Scheduler
+      if (true) {
+        final Optional<Map<Integer, Long>> partitionSizes = outputWriter.getPartitionSizeMap();
+        if (partitionSizes.isPresent()) {
+          computePartitionSizeMap(partitionSizeMap, partitionSizes.get());
+        }
+      }
     });
 
     // finalize OutputWriters for additional tagged children
@@ -702,6 +721,14 @@ public final class TaskExecutor {
         outputWriter.close();
         final Optional<Long> writtenBytes = outputWriter.getWrittenBytes();
         writtenBytes.ifPresent(writtenBytesList::add);
+
+        // Send partitionSizeMap to Scheduler
+        if (true) {
+          final Optional<Map<Integer, Long>> partitionSizes = outputWriter.getPartitionSizeMap();
+          if (partitionSizes.isPresent()) {
+            computePartitionSizeMap(partitionSizeMap, partitionSizes.get());
+          }
+        }
       })
     );
 
@@ -713,5 +740,62 @@ public final class TaskExecutor {
     // TODO #236: Decouple metric collection and sending logic
     metricMessageSender.send(TASK_METRIC_ID, taskId, "taskOutputBytes",
       SerializationUtils.serialize(totalWrittenBytes));
+
+    if (!partitionSizeMap.isEmpty()) {
+      persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+        ControlMessage.Message.newBuilder()
+          .setId(RuntimeIdManager.generateMessageId())
+          .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+          .setType(ControlMessage.MessageType.ParentTaskDataCollected)
+          .setParentTaskDataCollected(ControlMessage.ParentTaskDataCollectMsg.newBuilder()
+            .setTaskId(taskId)
+            .setPartitionSizeMap(ByteString.copyFrom(SerializationUtils.serialize(partitionSizeMap)))
+            .build())
+          .build());
+    }
   }
+
+  // Methods for work stealing
+  /**
+   * Gather the KV statistics of processed data when execution is completed.
+   * This method is for work stealing implementation: the accumulated statistics will be used to
+   * detect skewed tasks of the child stage.
+   *
+   * @param totalPartitionSizeMap     accumulated partitionSizeMap of task.
+   * @param singlePartitionSizeMap    partitionSizeMap gained from single OutputWriter.
+   */
+  private void computePartitionSizeMap(final Map<Integer, Long> totalPartitionSizeMap,
+                                       final Map<Integer, Long> singlePartitionSizeMap) {
+    for (Integer hashedKey : singlePartitionSizeMap.keySet()) {
+      final Long partitionSize = singlePartitionSizeMap.get(hashedKey);
+      if (totalPartitionSizeMap.containsKey(hashedKey)) {
+        totalPartitionSizeMap.compute(hashedKey, (existingKey, existingValue) -> existingValue + partitionSize);
+      } else {
+        totalPartitionSizeMap.put(hashedKey, partitionSize);
+      }
+    }
+  }
+
+  /**
+   * Send the temporally processed bytes of the current task on request from the scheduler.
+   * This method is for work stealing implementation.
+   */
+  public void onRequestForProcessedData() {
+    LOG.error("{}, bytes {}, replying for the request", taskId, serializedReadBytes);
+    persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
+      ControlMessage.Message.newBuilder()
+        .setId(RuntimeIdManager.generateMessageId())
+        .setListenerId(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID)
+        .setType(ControlMessage.MessageType.CurrentlyProcessedBytesCollected)
+        .setCurrentlyProcessedBytesCollected(ControlMessage.CurrentlyProcessedBytesCollectMsg.newBuilder()
+          .setTaskId(this.taskId)
+          .setProcessedDataBytes(serializedReadBytes)
+          .build())
+        .build());
+  }
+
+  public String getTaskId() {
+    return this.taskId;
+  }
+
 }

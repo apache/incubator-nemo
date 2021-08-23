@@ -40,6 +40,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -141,7 +142,9 @@ public final class ParentTaskDataFetcherTest {
     return new ParentTaskDataFetcher(
       mock(IRVertex.class),
       readerForParentTask, // This is the only argument that affects the behavior of ParentTaskDataFetcher
-      mock(OutputCollector.class));
+      mock(OutputCollector.class),
+      new AtomicInteger(0),
+      new AtomicInteger(Integer.MAX_VALUE));
   }
 
   private InputReader generateInputReader(final CompletableFuture completableFuture,

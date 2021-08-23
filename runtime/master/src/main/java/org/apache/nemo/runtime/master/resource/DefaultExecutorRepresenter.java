@@ -170,6 +170,11 @@ public final class DefaultExecutorRepresenter implements ExecutorRepresenter {
     failedTasks.add(failedTask);
   }
 
+  @Override
+  public boolean isExecutorSlotAvailable() {
+    return getExecutorCapacity() - getNumOfRunningTasks() > 0;
+  }
+
   /**
    * @return how many Tasks can this executor simultaneously run
    */
