@@ -35,7 +35,6 @@ import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.EnableWorkStealingProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
-import org.apache.nemo.common.ir.vertex.executionproperty.WorkStealingSubSplitProperty;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;

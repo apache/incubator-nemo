@@ -38,6 +38,8 @@ import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.executor.MetricMessageSender;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.DataUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -50,6 +52,7 @@ import java.util.function.Predicate;
  * Represents the input data transfer to a task.
  */
 public final class BlockInputReader implements InputReader {
+  private static final Logger LOG = LoggerFactory.getLogger(BlockInputReader.class.getName());
   private final BlockManagerWorker blockManagerWorker;
   private final MetricMessageSender metricMessageSender;
   private final String dstTaskId;
@@ -100,8 +103,8 @@ public final class BlockInputReader implements InputReader {
   public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read(final String workStealingState,
                                                                      final int numSubSplit,
                                                                      final int subSplitIndex) {
-    if (workStealingState.equals(MERGE_STRATEGY) &&
-      srcVertex.getPropertyValue(EnableWorkStealingProperty.class).orElse(DEFAULT_STRATEGY)
+    if (workStealingState.equals(MERGE_STRATEGY)
+      && srcVertex.getPropertyValue(EnableWorkStealingProperty.class).orElse(DEFAULT_STRATEGY)
         .equals(SPLIT_STRATEGY)) {
       return readSplitBlocks(InputReader.getSourceParallelism(this),
         srcVertex.getPropertyValue(WorkStealingSubSplitProperty.class).orElse(1));
@@ -146,8 +149,8 @@ public final class BlockInputReader implements InputReader {
                                                                 final int numSubSplit,
                                                                 final int desiredIndex) {
 
-    final boolean isMergeAfterSplit = workStealingState.equals(MERGE_STRATEGY) &&
-      srcVertex.getPropertyValue(EnableWorkStealingProperty.class).orElse(DEFAULT_STRATEGY)
+    final boolean isMergeAfterSplit = workStealingState.equals(MERGE_STRATEGY)
+      && srcVertex.getPropertyValue(EnableWorkStealingProperty.class).orElse(DEFAULT_STRATEGY)
         .equals(SPLIT_STRATEGY);
 
     if (!isMergeAfterSplit && !workStealingState.equals(SPLIT_STRATEGY)) {
@@ -205,6 +208,7 @@ public final class BlockInputReader implements InputReader {
    */
   private String generateWildCardBlockId(final int producerTaskIndex,
                                          final String subSplitIndex) {
+    LOG.error("");
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
       runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     if (!duplicateDataProperty.isPresent() || duplicateDataProperty.get().getGroupSize() <= 1) {
@@ -215,7 +219,7 @@ public final class BlockInputReader implements InputReader {
   }
 
   private CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
-    final String blockIdWildcard = generateWildCardBlockId(dstTaskIndex, "1");
+    final String blockIdWildcard = generateWildCardBlockId(dstTaskIndex, "*");
     return blockManagerWorker.readBlock(
       blockIdWildcard, runtimeEdge.getId(), runtimeEdge.getExecutionProperties(), HashRange.all());
   }
@@ -235,7 +239,7 @@ public final class BlockInputReader implements InputReader {
       if (predicate.test(srcTaskIdx)) {
         for (int subSplitIdx = 0; subSplitIdx < numSubSplit; subSplitIdx++) {
           final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx,
-            numSubSplit == 1 ? "*": Integer.toString(subSplitIdx));
+            numSubSplit == 1 ? "*" : Integer.toString(subSplitIdx));
           futures.add(blockManagerWorker.readBlock(
             blockIdWildcard, runtimeEdge.getId(), runtimeEdge.getExecutionProperties(), HashRange.all()));
         }
@@ -312,8 +316,8 @@ public final class BlockInputReader implements InputReader {
       // source parallelism, current sub split num, current sub split index, parameter index
       int sourceParallelism = InputReader.getSourceParallelism(this);
       return Math.round(sourceParallelism / numSubSplit) * RuntimeIdManager.getPartialFromTaskId(dstTaskId) + index;
-    } else if (workStealingState.equals(MERGE_STRATEGY) &&
-        srcVertex.getPropertyValue(EnableWorkStealingProperty.class).orElse(DEFAULT_STRATEGY)
+    } else if (workStealingState.equals(MERGE_STRATEGY)
+      && srcVertex.getPropertyValue(EnableWorkStealingProperty.class).orElse(DEFAULT_STRATEGY)
           .equals(SPLIT_STRATEGY)) {
       // src parallelism, src original parallelism, source sub split num
       int srcNumSubSplit = srcVertex.getPropertyValue(WorkStealingSubSplitProperty.class).orElse(1);

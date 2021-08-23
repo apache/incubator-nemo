@@ -27,7 +27,6 @@ import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.InputReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.management.snmp.jvmmib.EnumJvmMemPoolThreshdSupport;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
@@ -172,9 +171,8 @@ class ParentTaskDataFetcher extends DataFetcher {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = inputReader
       .read(workStealingState, subSplitNum, RuntimeIdManager.getPartialFromTaskId(taskId));
     this.expectedNumOfIterators = futures.size();
-    // 여기도 고쳐야 할 듯. index가 기존의 표현이랑 좀 달라지니까.
     for (int i = 0; i < futures.size(); i++) {
-      final int index = i; // 여기 더이상 고칠 필요 없는데 원래 뭐였는지 체크
+      final int index = i;
       final CompletableFuture<DataUtil.IteratorWithNumBytes> future = futures.get(i);
       future.whenComplete((iterator, exception) -> {
         handleIncomingBlock(index, future);

@@ -202,16 +202,16 @@ public final class PlanStateManager {
     final Stage stage = physicalPlan.getStageDAG().getVertexById(stageId);
     for (final int taskIndex : stage.getTaskIndices()) {
       LOG.error("{} task index {}", stageId, taskIndex);
-      final List<List<TaskState>> attemptStatesForThisTaskIndex =
+      final List<List<TaskState>> attemptStatesPerPartialTaskForThisTaskIndex =
         stageIdToTaskIdxToAttemptStates.get(stageId).get(taskIndex);
-      LOG.error("partial index size : {}", attemptStatesForThisTaskIndex.size()); // no tasks in here!
-      if (attemptStatesForThisTaskIndex.size() == 0) {
+      LOG.error("partial index size : {}", attemptStatesPerPartialTaskForThisTaskIndex.size()); // no tasks in here!
+      if (attemptStatesPerPartialTaskForThisTaskIndex.size() == 0) {
         // initialize in here
         for (int i = 0; i < stage.getSubSplitNum(); i++) {
-          attemptStatesForThisTaskIndex.add(new ArrayList<>());
+          attemptStatesPerPartialTaskForThisTaskIndex.add(new ArrayList<>());
         }
       }
-      for (List<TaskState> attemptStatesForThisPartialTaskIndex : attemptStatesForThisTaskIndex) {
+      for (List<TaskState> attemptStatesForThisPartialTaskIndex : attemptStatesPerPartialTaskForThisTaskIndex) {
 
         // If one of the attempts is COMPLETE, do not schedule
         if (attemptStatesForThisPartialTaskIndex
@@ -244,9 +244,10 @@ public final class PlanStateManager {
           for (int attempt = 0; attempt < attemptStatesForThisPartialTaskIndex.size(); attempt++) {
             if (attemptStatesForThisPartialTaskIndex.get(attempt).getStateMachine().getCurrentState()
               .equals(TaskState.State.READY)) {
-              if (attemptStatesForThisTaskIndex.size() > 1) {
+              if (attemptStatesPerPartialTaskForThisTaskIndex.size() > 1) {
+
                 taskAttemptsToSchedule.add(RuntimeIdManager.generateWorkStealingTaskId(stageId, taskIndex,
-                  attemptStatesForThisTaskIndex.indexOf(attemptStatesForThisPartialTaskIndex), attempt));
+                  attemptStatesPerPartialTaskForThisTaskIndex.indexOf(attemptStatesForThisPartialTaskIndex), attempt));
               } else {
                 taskAttemptsToSchedule.add(RuntimeIdManager.generateTaskId(stageId, taskIndex, attempt));
               }

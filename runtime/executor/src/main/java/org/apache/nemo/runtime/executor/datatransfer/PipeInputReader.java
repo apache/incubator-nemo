@@ -96,6 +96,13 @@ public final class PipeInputReader implements InputReader {
   }
 
   @Override
+  public CompletableFuture<DataUtil.IteratorWithNumBytes> retry(final String workStealingState,
+                                                                final int numSubSplit,
+                                                                final int index) {
+    return retry(index);
+  }
+
+  @Override
   public ExecutionPropertyMap<EdgeExecutionProperty> getProperties() {
     return runtimeEdge.getExecutionProperties();
   }

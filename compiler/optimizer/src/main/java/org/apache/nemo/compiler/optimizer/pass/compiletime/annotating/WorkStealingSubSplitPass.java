@@ -78,7 +78,8 @@ public final class WorkStealingSubSplitPass extends AnnotatingPass {
     return irdag;
   }
 
-  private void updateParallelismProperty(IRDAG irdag, Map<IRVertex, Integer> vertexToSplitNum) {
+  private void updateParallelismProperty(final IRDAG irdag,
+                                         final Map<IRVertex, Integer> vertexToSplitNum) {
     final Map<IRVertex, Integer> vertexToStageId = stagePartitioner.apply(irdag);
 
     final Map<Integer, Set<IRVertex>> stageIdToStageVertices = new HashMap<>();
