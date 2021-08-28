@@ -368,8 +368,8 @@ public final class BlockInputReader implements InputReader {
                              final int index) {
     if (workStealingState.equals(SPLIT_STRATEGY)) {
       /* SPLIT strategy */
-      int sourceParallelism = InputReader.getSourceParallelism(this);
-      return Math.round(sourceParallelism / numSubSplit) * RuntimeIdManager.getSubSplitIndexFromTaskId(dstTaskId) + index;
+      int srcParallelism = InputReader.getSourceParallelism(this);
+      return Math.round(srcParallelism / numSubSplit) * RuntimeIdManager.getSubSplitIndexFromTaskId(dstTaskId) + index;
     } else if (workStealingState.equals(MERGE_STRATEGY)
       && srcVertex.getPropertyValue(WorkStealingStateProperty.class).orElse(DEFAULT_STRATEGY)
           .equals(SPLIT_STRATEGY)) {
