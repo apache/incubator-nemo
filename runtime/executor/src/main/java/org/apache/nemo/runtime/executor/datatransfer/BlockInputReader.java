@@ -99,6 +99,17 @@ public final class BlockInputReader implements InputReader {
     }
   }
 
+  /**
+   * An extended version of {@link #read()} with work stealing options.
+   * - DEFAULT STRATEGY: {@link #read()}
+   * - SPLIT STRATEGY: {@link #readPartial(int, int)}
+   * - MERGE STRATEGY: {@link #readSplitBlocks(int, int)}
+   *
+   * @param workStealingState work stealing strategy.
+   * @param numSubSplit       number to split within a task index.
+   * @param subSplitIndex     index of sub split task.
+   * @return
+   */
   @Override
   public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read(final String workStealingState,
                                                                      final int numSubSplit,
@@ -109,24 +120,21 @@ public final class BlockInputReader implements InputReader {
       return readSplitBlocks(InputReader.getSourceParallelism(this),
         srcVertex.getPropertyValue(WorkStealingSubSplitProperty.class).orElse(1));
     } else {
-      List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = read();
 
-      if (!workStealingState.equals(SPLIT_STRATEGY)) {
-        /* DEFAULT case */
-        LOG.error("DEFAULT CASE: size {}", futures.size());
-        return futures;
+      if (workStealingState.equals(SPLIT_STRATEGY)) {
+        /* SPLIT case*/
+        final int srcParallelism = InputReader.getSourceParallelism(this);
+        final int leftInterval = subSplitIndex * (srcParallelism / numSubSplit);
+        final int rightInterval = numSubSplit == subSplitIndex + 1
+          ? srcParallelism : (subSplitIndex + 1) * (srcParallelism / numSubSplit);
+        LOG.error("SPLIT CASE: future.size: {}", srcParallelism);
+        LOG.error("SPLIT CASE: numSubSplit, index: {}, {}", numSubSplit, subSplitIndex);
+        LOG.error("SPLIT CASE: [{}, {})", leftInterval, rightInterval);
+        return readPartial(leftInterval, rightInterval);
       }
 
-      /* SPLIT case*/
-      // 가능한 even 하게 나누는 방법 생각해서 보완
-      // 19를 10개로 나누는 건 1*9, 10*1 보다는 2*9, 1*1 이 나음'
-      final int leftInterval = subSplitIndex * (futures.size() / numSubSplit);
-      final int rightInterval = numSubSplit == subSplitIndex + 1
-        ? futures.size() : (subSplitIndex + 1) * (futures.size() / numSubSplit);
-      LOG.error("SPLIT CASE: future.size: {}", futures.size());
-      LOG.error("SPLIT CASE: numSubSplit, index: {}, {}", numSubSplit, subSplitIndex);
-      LOG.error("SPLIT CASE: [{}, {})", leftInterval, rightInterval);
-      return futures.subList(leftInterval, rightInterval);
+      /* DEFAULT case */
+      return read();
     }
   }
 
@@ -286,6 +294,26 @@ public final class BlockInputReader implements InputReader {
       }
     }
     return futures;
+  }
+
+  // methods related to work stealing policy
+
+  private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readPartial(final int startIndex,
+                                                                             final int endIndex) {
+    final Optional<CommunicationPatternProperty.Value> comValueOptional =
+      runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
+    final CommunicationPatternProperty.Value comValue = comValueOptional.orElseThrow(IllegalStateException::new);
+
+    switch (comValue) {
+      case ONE_TO_ONE:
+        return Collections.singletonList(readOneToOne());
+      case BROADCAST:
+        return readBroadcast(index -> startIndex <= index && index < endIndex, Optional.empty(), 1);
+      case SHUFFLE:
+        return readDataInRange(index -> startIndex <= index && index < endIndex, Optional.empty(), 1);
+      default:
+        throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
+    }
   }
 
   /**
