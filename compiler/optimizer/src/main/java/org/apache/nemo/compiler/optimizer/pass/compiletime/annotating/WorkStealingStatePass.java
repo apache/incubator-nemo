@@ -36,15 +36,15 @@ import java.util.*;
  */
 @Annotates(EnableWorkStealingProperty.class)
 @Requires(CommunicationPatternProperty.class)
-public final class WorkStealingPass extends AnnotatingPass {
+public final class WorkStealingStatePass extends AnnotatingPass {
   private static final String SPLIT_STRATEGY = "SPLIT";
   private static final String MERGE_STRATEGY = "MERGE";
   private static final String DEFAULT_STRATEGY = "DEFAULT";
 
   private final StagePartitioner stagePartitioner = new StagePartitioner();
 
-  public WorkStealingPass() {
-    super(WorkStealingPass.class);
+  public WorkStealingStatePass() {
+    super(WorkStealingStatePass.class);
   }
 
   @Override

@@ -19,9 +19,8 @@
 package org.apache.nemo.compiler.optimizer.policy;
 
 import org.apache.nemo.common.ir.IRDAG;
-import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.WorkStealingPass;
-import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.WorkStealingSubSplitPass;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.DefaultCompositePass;
+import org.apache.nemo.compiler.optimizer.pass.compiletime.composite.WorkStealingCompositePass;
 import org.apache.nemo.compiler.optimizer.pass.runtime.Message;
 
 /**
@@ -31,8 +30,7 @@ public final class WorkStealingPolicy implements Policy {
   public static final PolicyBuilder BUILDER =
     new PolicyBuilder()
       .registerCompileTimePass(new DefaultCompositePass())
-      .registerCompileTimePass(new WorkStealingPass())
-      .registerCompileTimePass(new WorkStealingSubSplitPass());
+      .registerCompileTimePass(new WorkStealingCompositePass());
   private final Policy policy;
 
   /**

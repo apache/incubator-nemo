@@ -146,7 +146,6 @@ public final class PlanStateManager {
    */
   public synchronized void updatePlan(final PhysicalPlan physicalPlanToUpdate,
                                       final int maxScheduleAttemptToSet) {
-    LOG.error("update plan");
     if (!initialized) {
       // First scheduling.
       this.initialized = true;
@@ -167,7 +166,6 @@ public final class PlanStateManager {
    * TODO #182: Consider reshaping in run-time optimization. At now, we only consider plan appending.
    */
   private void initializeStates() {
-    LOG.error("initialize states");
     onPlanStateChanged(PlanState.State.EXECUTING);
     physicalPlan.getStageDAG().topologicalDo(stage -> {
       stageIdToState.putIfAbsent(stage.getId(), new StageState());
@@ -191,7 +189,6 @@ public final class PlanStateManager {
    */
   public synchronized List<String> getTaskAttemptsToSchedule(final String stageId) {
     // initialization: 첫번째로 만들어지는케이스를 따로 생각해야 함.
-    LOG.error("GET TASK ATTEMPTS TO SCHEDULE at {}", stageId);
     if (getStageState(stageId).equals(StageState.State.COMPLETE)) {
       // This stage is done
       return new ArrayList<>(0);
@@ -201,12 +198,9 @@ public final class PlanStateManager {
     final List<String> taskAttemptsToSchedule = new ArrayList<>();
     final Stage stage = physicalPlan.getStageDAG().getVertexById(stageId);
     for (final int taskIndex : stage.getTaskIndices()) {
-      LOG.error("{} task index {}", stageId, taskIndex);
       final List<List<TaskState>> attemptStatesPerPartialTaskForThisTaskIndex =
         stageIdToTaskIdxToAttemptStates.get(stageId).get(taskIndex);
-      LOG.error("partial index size : {}", attemptStatesPerPartialTaskForThisTaskIndex.size());
       if (attemptStatesPerPartialTaskForThisTaskIndex.size() == 0) {
-        LOG.error("in initialization stage: {}", stage.getSubSplitNum());
         // initialize in here
         for (int i = 0; i < stage.getSubSplitNum(); i++) {
           attemptStatesPerPartialTaskForThisTaskIndex.add(new ArrayList<>());
@@ -260,7 +254,6 @@ public final class PlanStateManager {
 
       }
     }
-    LOG.error("attempts to schedule: {} tasks", taskAttemptsToSchedule.size());
     return taskAttemptsToSchedule;
   }
 
@@ -269,7 +262,6 @@ public final class PlanStateManager {
    * @return all task attempt ids of the stage.
    */
   public synchronized Set<String> getAllTaskAttemptsOfStage(final String stageId) {
-    LOG.error("get al task attempts of stage");
     return getTaskAttemptIdsToItsState(stageId).keySet();
   }
 
@@ -281,7 +273,6 @@ public final class PlanStateManager {
    * @return a map from an EXECUTING task to its running time so far.
    */
   public synchronized Map<String, Long> getExecutingTaskToRunningTimeMs(final String stageId) {
-    LOG.error("get executing task to running time ms");
     final long curTime = System.currentTimeMillis();
     final Map<String, Long> result = new HashMap<>();
 
@@ -342,7 +333,6 @@ public final class PlanStateManager {
    * @param newTaskState the new state of the task.
    */
   public synchronized void onTaskStateChanged(final String taskId, final TaskState.State newTaskState) {
-    LOG.error("on task state changed");
     // Change task state
     final StateMachine taskState = getTaskStateHelper(taskId).getStateMachine();
     LOG.debug("Task State Transition: id {}, from {} to {}",
@@ -427,7 +417,6 @@ public final class PlanStateManager {
    * @param newStageState of the stage.
    */
   private void onStageStateChanged(final String stageId, final StageState.State newStageState) {
-    LOG.error("{} completed", stageId);
     // Change stage state
     final StateMachine stageStateMachine = stageIdToState.get(stageId).getStateMachine();
 
@@ -532,7 +521,6 @@ public final class PlanStateManager {
    */
   @VisibleForTesting
   public synchronized Map<String, TaskState.State> getAllTaskAttemptIdsToItsState() {
-    LOG.error("get all task attempt ids to its state");
     return physicalPlan.getStageDAG().getVertices()
       .stream()
       .map(Stage::getId)
@@ -578,7 +566,6 @@ public final class PlanStateManager {
   }
 
   private Map<String, TaskState.State> getTaskAttemptIdsToItsState(final String stageId) {
-    LOG.error("get task attempt ids to its state");
     final Map<String, TaskState.State> result = new HashMap<>();
     final Map<Integer, List<List<TaskState>>> taskIdToState = stageIdToTaskIdxToAttemptStates.get(stageId);
     for (int taskIndex : taskIdToState.keySet()) {
@@ -620,7 +607,6 @@ public final class PlanStateManager {
   }
 
   private List<TaskState.State> getPeerAttemptsForTheSameTaskIndex(final String taskId) {
-    LOG.error("get peer attempts for the same task index");
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
     final int partialIndex = RuntimeIdManager.getPartialFromTaskId(taskId);
@@ -662,7 +648,6 @@ public final class PlanStateManager {
    * @param suffix suffix for file name
    */
   public void storeJSON(final String suffix) {
-    LOG.error("STORE JSON {}", suffix);
     if (dagDirectory.equals(EMPTY_DAG_DIRECTORY)) {
       return;
     }
