@@ -43,8 +43,7 @@ import java.util.concurrent.Executors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -59,7 +58,6 @@ public final class ParentTaskDataFetcherTest {
   public void testEmpty() throws Exception {
     final List<String> empty = new ArrayList<>(0); // empty data
     final InputReader inputReader = generateInputReader(generateCompletableFuture(empty.iterator()));
-
     // Fetcher
     final ParentTaskDataFetcher fetcher = createFetcher(inputReader);
     assertEquals(Finishmark.getInstance(), fetcher.fetchDataElement());
@@ -70,7 +68,6 @@ public final class ParentTaskDataFetcherTest {
     final List<String> oneNull = new ArrayList<>(1); // empty data
     oneNull.add(null);
     final InputReader inputReader = generateInputReader(generateCompletableFuture(oneNull.iterator()));
-
     // Fetcher
     final ParentTaskDataFetcher fetcher = createFetcher(inputReader);
 
@@ -119,7 +116,9 @@ public final class ParentTaskDataFetcherTest {
     when(inputReader.retry(anyInt()))
       .thenReturn(generateCompletableFuture(
         empty.iterator())); // success upon retry
-
+    when(inputReader.retry(anyString(), anyInt(), anyInt()))
+      .thenReturn(generateCompletableFuture(
+        empty.iterator())); // success upon retry
     // Fetcher should work on retry
     final ParentTaskDataFetcher fetcher = createFetcher(inputReader);
     assertEquals(Finishmark.getInstance(), fetcher.fetchDataElement());
@@ -144,7 +143,7 @@ public final class ParentTaskDataFetcherTest {
       mock(OutputCollector.class),
       "DEFAULT",
       1,
-      "");
+      "DUMMY-0-*-0");
   }
 
   private InputReader generateInputReader(final CompletableFuture completableFuture,
@@ -152,6 +151,7 @@ public final class ParentTaskDataFetcherTest {
     final InputReader inputReader = mock(InputReader.class, Mockito.CALLS_REAL_METHODS);
     when(inputReader.getSrcIrVertex()).thenReturn(mock(IRVertex.class));
     when(inputReader.read()).thenReturn(Arrays.asList(completableFuture));
+    when(inputReader.read(anyString(), anyInt(), anyInt())).thenReturn(Arrays.asList(completableFuture));
     final ExecutionPropertyMap<EdgeExecutionProperty> propertyMap = new ExecutionPropertyMap<>("");
     for (final EdgeExecutionProperty p : properties) {
       propertyMap.put(p);

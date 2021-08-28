@@ -44,7 +44,7 @@ public final class WordCount {
   public static void main(final String[] args) {
     final String inputFilePath = args[0];
     final String outputFilePath = args[1];
-    final boolean enableWorkStealing = Boolean.parseBoolean(args[2]);
+    final boolean enableWorkStealing = args.length > 2 && Boolean.parseBoolean(args[2]);
     final PipelineOptions options = NemoPipelineOptionsFactory.create();
 
     options.setJobName("WordCount");

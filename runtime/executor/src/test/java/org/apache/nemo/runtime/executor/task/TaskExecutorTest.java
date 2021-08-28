@@ -589,6 +589,7 @@ public final class TaskExecutorTest {
       srcVertex.setProperty(ParallelismProperty.of(SOURCE_PARALLELISM));
       when(inputReader.getSrcIrVertex()).thenReturn(srcVertex);
       when(inputReader.read()).thenReturn(inputFutures);
+      when(inputReader.read(anyString(), anyInt(), anyInt())).thenReturn(inputFutures);
       when(inputReader.getProperties()).thenReturn(new ExecutionPropertyMap<>(""));
       return inputReader;
     }
