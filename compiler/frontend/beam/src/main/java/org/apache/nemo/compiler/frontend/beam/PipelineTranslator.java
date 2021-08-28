@@ -269,7 +269,8 @@ final class PipelineTranslator {
   private static void groupByKeyTranslator(final PipelineTranslationContext ctx,
                                            final TransformHierarchy.Node beamNode,
                                            final GroupByKey<?, ?> transform) {
-    final IRVertex vertex = new OperatorVertex(createGBKTransform(ctx, beamNode));
+    final String fullName = beamNode.getFullName();
+    final IRVertex vertex = new OperatorVertex(createGBKTransform(ctx, beamNode), fullName);
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
@@ -324,7 +325,8 @@ final class PipelineTranslator {
   private static void flattenTranslator(final PipelineTranslationContext ctx,
                                         final TransformHierarchy.Node beamNode,
                                         final Flatten.PCollections<?> transform) {
-    final IRVertex vertex = new OperatorVertex(new FlattenTransform());
+    final String fullName = beamNode.getFullName();
+    final IRVertex vertex = new OperatorVertex(new FlattenTransform(), fullName);
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));

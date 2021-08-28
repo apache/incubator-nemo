@@ -25,7 +25,7 @@ import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.EnableWorkStealingProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.WorkStealingStateProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.WorkStealingSubSplitProperty;
 import org.apache.reef.annotations.audience.DriverSide;
 
@@ -55,7 +55,7 @@ public final class StagePartitioner implements Function<IRDAG, Map<IRVertex, Int
    * Default Constructor.
    */
   public StagePartitioner() {
-    addIgnoredPropertyKey(EnableWorkStealingProperty.class);
+    addIgnoredPropertyKey(WorkStealingStateProperty.class);
     addIgnoredPropertyKey(WorkStealingSubSplitProperty.class);
   }
 

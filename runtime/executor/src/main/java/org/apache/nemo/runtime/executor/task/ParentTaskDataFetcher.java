@@ -169,7 +169,7 @@ class ParentTaskDataFetcher extends DataFetcher {
 
   private void fetchDataLazily() {
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = inputReader
-      .read(workStealingState, subSplitNum, RuntimeIdManager.getPartialFromTaskId(taskId));
+      .read(workStealingState, subSplitNum, RuntimeIdManager.getSubSplitIndexFromTaskId(taskId));
     this.expectedNumOfIterators = futures.size();
     for (int i = 0; i < futures.size(); i++) {
       final int index = i;

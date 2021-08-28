@@ -53,7 +53,7 @@ public final class WordCountITCase {
   public void setUp() throws Exception {
     builder = new ArgBuilder()
       .addUserMain(WordCount.class.getCanonicalName())
-      .addUserArgs(inputFilePath, outputFilePath);
+      .addUserArgs(inputFilePath, outputFilePath, "false");
   }
 
   @After
@@ -76,7 +76,9 @@ public final class WordCountITCase {
 
   @Test(timeout = ExampleTestArgs.TIMEOUT, expected = Test.None.class)
   public void testWorkStealing() throws Exception {
-    JobLauncher.main(builder
+    JobLauncher.main(new ArgBuilder()
+      .addUserMain(WordCount.class.getCanonicalName())
+      .addUserArgs(inputFilePath, outputFilePath, "true")
       .addResourceJson(executorResourceFileName)
       .addJobId(WordCountITCase.class.getSimpleName() + "_workStealing")
       .addOptimizationPolicy(WorkStealingPolicy.class.getCanonicalName())

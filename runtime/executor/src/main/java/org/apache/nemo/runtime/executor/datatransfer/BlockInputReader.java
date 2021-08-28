@@ -30,7 +30,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.EnableWorkStealingProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.WorkStealingStateProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.WorkStealingSubSplitProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
@@ -112,7 +112,7 @@ public final class BlockInputReader implements InputReader {
                                                                      final int numSubSplit,
                                                                      final int subSplitIndex) {
     if (workStealingState.equals(MERGE_STRATEGY)
-      && srcVertex.getPropertyValue(EnableWorkStealingProperty.class).orElse(DEFAULT_STRATEGY)
+      && srcVertex.getPropertyValue(WorkStealingStateProperty.class).orElse(DEFAULT_STRATEGY)
         .equals(SPLIT_STRATEGY)) {
       /* MERGE case */
       return readSplitBlocks(InputReader.getSourceParallelism(this),
@@ -166,7 +166,7 @@ public final class BlockInputReader implements InputReader {
                                                                 final int desiredIndex) {
 
     final boolean isMergeAfterSplit = workStealingState.equals(MERGE_STRATEGY)
-      && srcVertex.getPropertyValue(EnableWorkStealingProperty.class).orElse(DEFAULT_STRATEGY)
+      && srcVertex.getPropertyValue(WorkStealingStateProperty.class).orElse(DEFAULT_STRATEGY)
         .equals(SPLIT_STRATEGY);
 
     if (!isMergeAfterSplit && !workStealingState.equals(SPLIT_STRATEGY)) {
@@ -369,9 +369,9 @@ public final class BlockInputReader implements InputReader {
     if (workStealingState.equals(SPLIT_STRATEGY)) {
       /* SPLIT strategy */
       int sourceParallelism = InputReader.getSourceParallelism(this);
-      return Math.round(sourceParallelism / numSubSplit) * RuntimeIdManager.getPartialFromTaskId(dstTaskId) + index;
+      return Math.round(sourceParallelism / numSubSplit) * RuntimeIdManager.getSubSplitIndexFromTaskId(dstTaskId) + index;
     } else if (workStealingState.equals(MERGE_STRATEGY)
-      && srcVertex.getPropertyValue(EnableWorkStealingProperty.class).orElse(DEFAULT_STRATEGY)
+      && srcVertex.getPropertyValue(WorkStealingStateProperty.class).orElse(DEFAULT_STRATEGY)
           .equals(SPLIT_STRATEGY)) {
       /* MERGE strategy*/
       int srcNumSubSplit = srcVertex.getPropertyValue(WorkStealingSubSplitProperty.class).orElse(1);

@@ -104,7 +104,7 @@ public final class RuntimeIdManager {
                                        final String producerTaskId) {
     if (isWorkStealingTask(producerTaskId)) {
       return runtimeEdgeId + SPLITTER + getIndexFromTaskId(producerTaskId)
-        + SPLITTER + getPartialFromTaskId(producerTaskId)
+        + SPLITTER + getSubSplitIndexFromTaskId(producerTaskId)
         + SPLITTER + getAttemptFromTaskId(producerTaskId);
     } else {
       return runtimeEdgeId + SPLITTER + getIndexFromTaskId(producerTaskId)
@@ -171,9 +171,12 @@ public final class RuntimeIdManager {
   }
 
   /**
+   * Extracts task index from a block ID.
    *
+   * @param blockId the block ID to extract.
+   * @return the task index.
    */
-  public static String getSubSplitIndexFromBlockId(final String blockId) {
+  public static String getTaskSubSplitIndexFromBlockId(final String blockId) {
     if (isWorkStealingBlock(blockId)) {
       return split(blockId)[2];
     } else {
@@ -190,7 +193,7 @@ public final class RuntimeIdManager {
   public static String getWildCardFromBlockId(final String blockId) {
     return generateBlockIdWildcard(getRuntimeEdgeIdFromBlockId(blockId),
       getTaskIndexFromBlockId(blockId),
-      getSubSplitIndexFromBlockId(blockId));
+      getTaskSubSplitIndexFromBlockId(blockId));
   }
 
   /**
@@ -217,7 +220,7 @@ public final class RuntimeIdManager {
     return !split(taskId)[2].equals("*");
   }
 
-  public static int getPartialFromTaskId(final String taskId) {
+  public static int getSubSplitIndexFromTaskId(final String taskId) {
     return split(taskId)[2].equals("*") ? 0 : Integer.valueOf(split(taskId)[2]);
   }
   /**

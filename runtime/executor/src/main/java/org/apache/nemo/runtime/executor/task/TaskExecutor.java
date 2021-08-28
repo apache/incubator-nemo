@@ -30,7 +30,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.AdditionalOutputTagPrope
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.EnableWorkStealingProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.WorkStealingStateProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.WorkStealingSubSplitProperty;
 import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.SignalTransform;
@@ -292,7 +292,7 @@ public final class TaskExecutor {
                   dataFetcherOutputCollector));
             } else {
               final String workStealingState = irVertexDag.getVertices().stream()
-                .map(v -> v.getPropertyValue(EnableWorkStealingProperty.class).orElse("DEFAULT"))
+                .map(v -> v.getPropertyValue(WorkStealingStateProperty.class).orElse("DEFAULT"))
                 .filter(s -> !s.equals("DEFAULT"))
                 .findFirst().orElse("DEFAULT");
               final int numSubSplit = irVertexDag.getVertices().stream()
@@ -731,7 +731,7 @@ public final class TaskExecutor {
 
   private String getWorkStealingStrategy(final DAG<IRVertex, RuntimeEdge<IRVertex>> irVertexDag) {
     Set<String> strategy = irVertexDag.getVertices().stream()
-      .map(vertex -> vertex.getPropertyValue(EnableWorkStealingProperty.class).orElse("DEFAULT"))
+      .map(vertex -> vertex.getPropertyValue(WorkStealingStateProperty.class).orElse("DEFAULT"))
       .collect(Collectors.toSet());
     if (strategy.contains("SPLIT")) {
       return "SPLIT";

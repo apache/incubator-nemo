@@ -28,13 +28,13 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
  * MERGE  : vertex which merges the effect of work stealing
  * DEFAULT : vertex which is not the subject of work stealing
  */
-public class EnableWorkStealingProperty extends VertexExecutionProperty<String> {
+public class WorkStealingStateProperty extends VertexExecutionProperty<String> {
   /**
    * Default constructor.
    *
    * @param value value of the VertexExecutionProperty.
    */
-  public EnableWorkStealingProperty(final String value) {
+  public WorkStealingStateProperty(final String value) {
     super(value);
   }
 
@@ -44,7 +44,7 @@ public class EnableWorkStealingProperty extends VertexExecutionProperty<String> 
    * @param value value of the new execution property.
    * @return the newly created execution property.
    */
-  public static EnableWorkStealingProperty of(final String value) {
-    return new EnableWorkStealingProperty(value);
+  public static WorkStealingStateProperty of(final String value) {
+    return new WorkStealingStateProperty(value);
   }
 }

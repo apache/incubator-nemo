@@ -595,7 +595,7 @@ public final class PlanStateManager {
     return stageIdToTaskIdxToAttemptStates
       .get(RuntimeIdManager.getStageIdFromTaskId(taskId))
       .get(RuntimeIdManager.getIndexFromTaskId(taskId))
-      .get(RuntimeIdManager.getPartialFromTaskId(taskId))
+      .get(RuntimeIdManager.getSubSplitIndexFromTaskId(taskId))
       .get(RuntimeIdManager.getAttemptFromTaskId(taskId));
   }
 
@@ -609,7 +609,7 @@ public final class PlanStateManager {
   private List<TaskState.State> getPeerAttemptsForTheSameTaskIndex(final String taskId) {
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
-    final int partialIndex = RuntimeIdManager.getPartialFromTaskId(taskId);
+    final int partialIndex = RuntimeIdManager.getSubSplitIndexFromTaskId(taskId);
     final int attempt = RuntimeIdManager.getAttemptFromTaskId(taskId);
 
     final List<TaskState> otherAttemptsforTheSameTaskIndex =

@@ -21,7 +21,7 @@ package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import org.apache.nemo.common.ir.vertex.executionproperty.EnableWorkStealingProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.WorkStealingStateProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.WorkStealingSubSplitProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
@@ -33,7 +33,7 @@ import java.util.Map;
  * Optimization pass for tagging work stealing sub-split execution property.
  */
 @Annotates(WorkStealingSubSplitProperty.class)
-@Requires({EnableWorkStealingProperty.class, ParallelismProperty.class})
+@Requires({WorkStealingStateProperty.class, ParallelismProperty.class})
 public final class WorkStealingSubSplitPass extends AnnotatingPass {
   private static final String SPLIT_STRATEGY = "SPLIT";
   private static final String MERGE_STRATEGY = "MERGE";
@@ -54,7 +54,7 @@ public final class WorkStealingSubSplitPass extends AnnotatingPass {
     final Map<IRVertex, Integer> vertexToSplitNum = new HashMap<>();
 
     for (IRVertex vertex : irdag.getTopologicalSort()) {
-      if (vertex.getPropertyValue(EnableWorkStealingProperty.class)
+      if (vertex.getPropertyValue(WorkStealingStateProperty.class)
         .orElse(DEFAULT_STRATEGY).equals(SPLIT_STRATEGY)) {
         int maxSourceParallelism = irdag.getIncomingEdgesOf(vertex).stream().map(IREdge::getSrc)
           .mapToInt(v -> v.getPropertyValue(ParallelismProperty.class).orElse(DEFAULT_SUB_SPLIT_NUM))
