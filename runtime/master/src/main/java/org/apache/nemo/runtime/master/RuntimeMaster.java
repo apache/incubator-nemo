@@ -217,7 +217,6 @@ public final class RuntimeMaster {
    * @param planId the ID of the IR DAG Physical Plan.
    */
   public void recordIRDAGMetrics(final IRDAG irdag, final String planId) {
-    LOG.error("record metrics of {}", planId);
     metricStore.getOrCreateMetric(JobMetric.class, planId).setIRDAG(irdag);
   }
 
@@ -261,7 +260,6 @@ public final class RuntimeMaster {
    */
   public Pair<PlanStateManager, ScheduledExecutorService> execute(final PhysicalPlan plan,
                                                                   final int maxScheduleAttempt) {
-    LOG.error("EXECUTE in runtime master");
     final Callable<Pair<PlanStateManager, ScheduledExecutorService>> planExecutionCallable = () -> {
       this.irVertices.addAll(plan.getIdToIRVertex().values());
       try {

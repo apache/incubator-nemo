@@ -28,8 +28,6 @@ import org.apache.nemo.common.ir.vertex.executionproperty.EnableWorkStealingProp
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 import org.apache.nemo.runtime.common.plan.StagePartitioner;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
@@ -39,7 +37,6 @@ import java.util.*;
 @Annotates(EnableWorkStealingProperty.class)
 @Requires(CommunicationPatternProperty.class)
 public final class WorkStealingPass extends AnnotatingPass {
-  private static final Logger LOG = LoggerFactory.getLogger(WorkStealingPass.class.getName());
   private static final String SPLIT_STRATEGY = "SPLIT";
   private static final String MERGE_STRATEGY = "MERGE";
   private static final String DEFAULT_STRATEGY = "DEFAULT";
@@ -59,7 +56,6 @@ public final class WorkStealingPass extends AnnotatingPass {
       if (irVertex instanceof OperatorVertex && notConnectedToO2OEdge) {
         Transform transform = ((OperatorVertex) irVertex).getTransform();
         String transformFullName = ((OperatorVertex) irVertex).getTransformFullName();
-        LOG.error("transform full name: {}, {}", irVertex.getId(), transformFullName);
         if (transform.toString().contains("work stealing") || transformFullName.contains("work stealing")) {
           irVertex.setProperty(EnableWorkStealingProperty.of(SPLIT_STRATEGY));
         } else if (transform.toString().contains("merge") || transformFullName.contains("merge")) {

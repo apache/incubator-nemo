@@ -25,14 +25,9 @@ import org.apache.nemo.common.ir.vertex.executionproperty.EnableWorkStealingProp
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.WorkStealingSubSplitProperty;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
-import org.apache.nemo.runtime.common.plan.StagePartitioner;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Optimization pass for tagging work stealing sub-split execution property.
@@ -40,7 +35,6 @@ import java.util.Set;
 @Annotates(WorkStealingSubSplitProperty.class)
 @Requires({EnableWorkStealingProperty.class, ParallelismProperty.class})
 public final class WorkStealingSubSplitPass extends AnnotatingPass {
-  private static final Logger LOG = LoggerFactory.getLogger(WorkStealingSubSplitPass.class.getName());
   private static final String SPLIT_STRATEGY = "SPLIT";
   private static final String MERGE_STRATEGY = "MERGE";
   private static final String DEFAULT_STRATEGY = "DEFAULT";
@@ -48,7 +42,6 @@ public final class WorkStealingSubSplitPass extends AnnotatingPass {
   private static final int MAX_SUB_SPLIT_NUM = 5;
   private static final int DEFAULT_SUB_SPLIT_NUM = 1;
 
-  private final StagePartitioner stagePartitioner = new StagePartitioner();
   /**
    * Default Constructor.
    */
@@ -66,7 +59,6 @@ public final class WorkStealingSubSplitPass extends AnnotatingPass {
         int maxSourceParallelism = irdag.getIncomingEdgesOf(vertex).stream().map(IREdge::getSrc)
           .mapToInt(v -> v.getPropertyValue(ParallelismProperty.class).orElse(DEFAULT_SUB_SPLIT_NUM))
           .max().orElse(DEFAULT_SUB_SPLIT_NUM);
-        LOG.error("source parallelism of {} : {}", vertex.getId(), maxSourceParallelism);
         if (maxSourceParallelism > MAX_SUB_SPLIT_NUM) {
           vertex.setProperty(WorkStealingSubSplitProperty.of(MAX_SUB_SPLIT_NUM));
           vertexToSplitNum.put(vertex, MAX_SUB_SPLIT_NUM);
@@ -79,28 +71,6 @@ public final class WorkStealingSubSplitPass extends AnnotatingPass {
       }
     }
 
-    // updateParallelismProperty(irdag, vertexToSplitNum);
     return irdag;
-  }
-
-  private void updateParallelismProperty(final IRDAG irdag,
-                                         final Map<IRVertex, Integer> vertexToSplitNum) {
-    final Map<IRVertex, Integer> vertexToStageId = stagePartitioner.apply(irdag);
-
-    final Map<Integer, Set<IRVertex>> stageIdToStageVertices = new HashMap<>();
-    vertexToStageId.forEach((vertex, stageId) -> {
-      if (!stageIdToStageVertices.containsKey(stageId)) {
-        stageIdToStageVertices.put(stageId, new HashSet<>());
-      }
-      stageIdToStageVertices.get(stageId).add(vertex);
-    });
-
-    for (IRVertex vertex : vertexToSplitNum.keySet()) {
-      int numSubSplit = vertexToSplitNum.get(vertex);
-      int currentParallelism = vertex.getPropertyValue(ParallelismProperty.class).get();
-      for (IRVertex stageVertex : stageIdToStageVertices.get(vertexToStageId.get(vertex))) {
-        irdag.getVertexById(stageVertex.getId()).setProperty(ParallelismProperty.of(currentParallelism * numSubSplit));
-      }
-    }
   }
 }

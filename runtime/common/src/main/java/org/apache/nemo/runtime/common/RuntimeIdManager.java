@@ -18,9 +18,6 @@
  */
 package org.apache.nemo.runtime.common;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -28,7 +25,6 @@ import java.util.concurrent.atomic.AtomicLong;
  * ID Generator.
  */
 public final class RuntimeIdManager {
-  private static final Logger LOG = LoggerFactory.getLogger(RuntimeIdManager.class.getName());
   private static AtomicInteger physicalPlanIdGenerator = new AtomicInteger(0);
   private static AtomicInteger executorIdGenerator = new AtomicInteger(0);
   private static AtomicLong messageIdGenerator = new AtomicLong(1L);
@@ -107,7 +103,6 @@ public final class RuntimeIdManager {
   public static String generateBlockId(final String runtimeEdgeId,
                                        final String producerTaskId) {
     if (isWorkStealingTask(producerTaskId)) {
-      LOG.error("work stealing task detected: {}, {}", producerTaskId, runtimeEdgeId);
       return runtimeEdgeId + SPLITTER + getIndexFromTaskId(producerTaskId)
         + SPLITTER + getPartialFromTaskId(producerTaskId)
         + SPLITTER + getAttemptFromTaskId(producerTaskId);
@@ -133,7 +128,6 @@ public final class RuntimeIdManager {
                                                final int producerTaskIndex,
                                                final String subSplitIndex) {
     if (!subSplitIndex.equals("*")) {
-      LOG.error("work stealing task detected: {}, {}, {}", runtimeEdgeId, producerTaskIndex, subSplitIndex);
       return runtimeEdgeId + SPLITTER + producerTaskIndex
         + SPLITTER + subSplitIndex + SPLITTER + "*";
     } else {
