@@ -35,8 +35,8 @@ public interface ClientRPC {
    * @param handler handler implementation
    * @return {@code this}
    */
-  ClientRPC registerHandler(final ControlMessage.ClientToDriverMessageType type,
-                            final EventHandler<ControlMessage.ClientToDriverMessage> handler);
+  ClientRPC registerHandler(ControlMessage.ClientToDriverMessageType type,
+                            EventHandler<ControlMessage.ClientToDriverMessage> handler);
 
   /**
    * Shuts down the transport.
@@ -48,5 +48,5 @@ public interface ClientRPC {
    *
    * @param message message to send.
    */
-  void send(final ControlMessage.DriverToClientMessage message);
+  void send(ControlMessage.DriverToClientMessage message);
 }
