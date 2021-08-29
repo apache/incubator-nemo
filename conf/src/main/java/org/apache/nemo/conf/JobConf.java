@@ -325,6 +325,14 @@ public final class JobConf extends ConfigurationModuleBuilder {
   public final class ChunkSizeKb implements Name<Integer> {
   }
 
+  @NamedParameter(doc = "Job id", short_name = "node_json")
+  public final class NodeSpecJsonPath implements Name<String> {
+  }
+
+  @NamedParameter(doc = "Contents of JSON file that specifies bandwidth between locations")
+  public final class NodeSpecJsonContents implements Name<String> {
+  }
+
   //////////////////////////////// Intermediate Configurations
 
   /**
