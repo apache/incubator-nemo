@@ -24,9 +24,13 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.PipelineOptionsValidator;
 import org.apache.nemo.client.JobLauncher;
+import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
 import org.apache.nemo.compiler.frontend.beam.PipelineVisitor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -34,6 +38,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public final class NemoRunner extends PipelineRunner<NemoPipelineResult> {
   private final NemoPipelineOptions nemoPipelineOptions;
+  private static Class jobLauncher = JobLauncher.class;
 
   /**
    * BEAM Pipeline Runner.
@@ -86,9 +91,20 @@ public final class NemoRunner extends PipelineRunner<NemoPipelineResult> {
     final PipelineVisitor pipelineVisitor = new PipelineVisitor(pipeline, nemoPipelineOptions);
     pipeline.traverseTopologically(pipelineVisitor);
     final NemoPipelineResult nemoPipelineResult = new NemoPipelineResult();
-    CompletableFuture.runAsync(() ->
-      JobLauncher.launchDAG(pipelineVisitor.getConvertedPipeline(), nemoPipelineOptions.getJobName()))
-      .thenRun(nemoPipelineResult::setJobDone);
+
+    CompletableFuture.runAsync(() -> {
+      try {
+        Class[] methodParamClass = new Class[] {IRDAG.class, String.class};
+        Object[] methodParamObejct = new Object[] {pipelineVisitor.getConvertedPipeline(), nemoPipelineOptions.getJobName()};
+        jobLauncher.getMethod("launchDAG", methodParamClass).invoke(null, methodParamObejct);
+      } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+        e.printStackTrace();
+      }
+    }).thenRun(nemoPipelineResult::setJobDone);
     return nemoPipelineResult;
+  }
+
+  public static void setJobLauncher(final Class jobLauncher) {
+    NemoRunner.jobLauncher = jobLauncher;
   }
 }
