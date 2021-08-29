@@ -27,8 +27,6 @@ import org.apache.nemo.client.JobLauncher;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
 import org.apache.nemo.compiler.frontend.beam.PipelineVisitor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.CompletableFuture;
@@ -95,7 +93,8 @@ public final class NemoRunner extends PipelineRunner<NemoPipelineResult> {
     CompletableFuture.runAsync(() -> {
       try {
         Class[] methodParamClass = new Class[] {IRDAG.class, String.class};
-        Object[] methodParamObejct = new Object[] {pipelineVisitor.getConvertedPipeline(), nemoPipelineOptions.getJobName()};
+        Object[] methodParamObejct = new Object[] {pipelineVisitor.getConvertedPipeline(),
+          nemoPipelineOptions.getJobName()};
         jobLauncher.getMethod("launchDAG", methodParamClass).invoke(null, methodParamObejct);
       } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
         e.printStackTrace();
