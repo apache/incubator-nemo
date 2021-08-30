@@ -35,6 +35,7 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.transform.SignalTransform;
+import org.apache.nemo.common.ir.vertex.utility.IntermediateAccumulatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.RelayVertex;
 import org.slf4j.Logger;
@@ -491,11 +492,15 @@ public final class IRDAGChecker {
 
   void addIntermediateAccumulatorVertexCheckers() {
     final NeighborChecker shuffleExecutorSet = ((v, inEdges, outEdges) -> {
-      if (v.getPropertyValue(ShuffleExecutorSetProperty.class).isPresent()) {
-        if (inEdges.size() != 1 || outEdges.size() != 1 || inEdges.stream().anyMatch(e ->
+      if (v instanceof IntermediateAccumulatorVertex) {
+        if (inEdges.size() != 1 || outEdges.size() != 1) {
+          return failure("Intermediate accumulator vertex must have only one in/out edge.", v);
+        } else if (inEdges.stream().anyMatch(e ->
           !e.getPropertyValue(CommunicationPatternProperty.class).get()
             .equals(CommunicationPatternProperty.Value.PARTIAL_SHUFFLE))) {
-          return failure("Only intermediate accumulator vertex can have shuffle executor set property", v);
+          return failure("Intermediate accumulator vertex must have partial shuffle inEdge.", v);
+        } else if (!v.getPropertyValue(ShuffleExecutorSetProperty.class).isPresent()) {
+          return failure("Intermediate accumulator vertex must have shuffle executor set property.", v);
         } else if (v.getPropertyValue(ParallelismProperty.class).get()
           < v.getPropertyValue(ShuffleExecutorSetProperty.class).get().size()) {
           return failure("Parallelism must be greater or equal to the number of shuffle executor set", v);
@@ -503,7 +508,9 @@ public final class IRDAGChecker {
       } else {
         if (inEdges.stream().anyMatch(e -> e.getPropertyValue(CommunicationPatternProperty.class).get()
           .equals(CommunicationPatternProperty.Value.PARTIAL_SHUFFLE))) {
-          return failure("Intermediate accumulator vertex must have shuffle executor set property", v);
+          return failure("Only intermediate accumulator vertex can have partial shuffle inEdge.", v);
+        } else if (v.getPropertyValue(ShuffleExecutorSetProperty.class).isPresent()) {
+          return failure("Only intermediate accumulator vertex can have shuffle executor set property.", v);
         }
       }
       return success();

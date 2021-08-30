@@ -27,6 +27,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProp
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ShuffleExecutorSetProperty;
+import org.apache.nemo.common.ir.vertex.utility.IntermediateAccumulatorVertex;
 import org.apache.nemo.compiler.frontend.beam.transform.CombineTransform;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
@@ -49,7 +50,7 @@ public class IntermediateAccumulatorInsertionPass extends ReshapingPass {
    */
   public IntermediateAccumulatorInsertionPass() {
     super(IntermediateAccumulatorInsertionPass.class);
-    this.networkFilePath = Util.fetchProjectRootPath() + "/bin/network_profiling/labeldict.json";
+    this.networkFilePath = Util.fetchProjectRootPath() + "/tools/network_profiling/labeldict.json";
   }
 
   /**
@@ -129,7 +130,8 @@ public class IntermediateAccumulatorInsertionPass extends ReshapingPass {
 
         final CombineTransform<?, ?, ?> intermediateCombineStreamTransform =
           (CombineTransform) finalCombineStreamTransform.getIntermediateCombine().get();
-        final OperatorVertex accumulatorVertex = new OperatorVertex(intermediateCombineStreamTransform);
+        final IntermediateAccumulatorVertex accumulatorVertex =
+          new IntermediateAccumulatorVertex(intermediateCombineStreamTransform);
 
         targetEdge.getDst().copyExecutionPropertiesTo(accumulatorVertex);
         accumulatorVertex.setProperty(ParallelismProperty.of(srcParallelism * 2 / 3));

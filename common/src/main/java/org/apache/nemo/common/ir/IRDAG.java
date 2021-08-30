@@ -35,10 +35,10 @@ import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.executionproperty.ResourceSpecification;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
-import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
+import org.apache.nemo.common.ir.vertex.utility.IntermediateAccumulatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.TaskSizeSplitterVertex;
 import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageGeneratorVertex;
@@ -800,7 +800,7 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     modifiedDAG = builder.build();
   }
 
-  public void insert(final OperatorVertex accumulatorVertex, final IREdge targetEdge) {
+  public void insert(final IntermediateAccumulatorVertex accumulatorVertex, final IREdge targetEdge) {
     // Create a completely new DAG with the vertex inserted.
     final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
 
