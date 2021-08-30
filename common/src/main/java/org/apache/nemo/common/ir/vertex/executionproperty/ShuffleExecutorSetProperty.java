@@ -26,6 +26,8 @@ import java.util.HashSet;
 
 /**
  * List of set of node names to limit the scheduling of the tasks of the vertex to while shuffling.
+ * ShuffleExecutorSetProperty is only for IntermediateAccumulatorVertex.
+ * Other vertices must not have this property.
  */
 public final class ShuffleExecutorSetProperty extends VertexExecutionProperty<ArrayList<HashSet<String>>> {
 
