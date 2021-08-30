@@ -16,17 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.common.message;
+package org.apache.nemo.runtime.master.scheduler;
 
 import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.reef.tang.annotations.DefaultImplementation;
+import org.apache.nemo.runtime.common.message.ClientRPC;
 import org.apache.reef.wake.EventHandler;
 
+import javax.inject.Inject;
+
 /**
- * This class handles communication from/to clients.
+ * This is a Simulator for Driver-side RPC.
+ * It manages communication from/to Nemo Client.
  */
-@DefaultImplementation(ClientRPCImpl.class)
-public interface ClientRPC {
+// TODO #XXX: This part should support XGBoost optimization.
+public final class ClientRPCSimulator implements ClientRPC {
+
+  @Inject
+  public ClientRPCSimulator() {
+    super();
+  }
 
   /**
    * Registers handler for the given type of message.
@@ -35,18 +43,25 @@ public interface ClientRPC {
    * @param handler handler implementation
    * @return {@code this}
    */
-  ClientRPC registerHandler(ControlMessage.ClientToDriverMessageType type,
-                            EventHandler<ControlMessage.ClientToDriverMessage> handler);
+  @Override
+  public ClientRPCSimulator registerHandler(final ControlMessage.ClientToDriverMessageType type,
+                                            final EventHandler<ControlMessage.ClientToDriverMessage> handler) {
+    return this;
+  }
 
   /**
    * Shuts down the transport.
    */
-  void shutdown();
+  @Override
+  public void shutdown() {
+  }
 
   /**
    * Write message to client.
    *
    * @param message message to send.
    */
-  void send(ControlMessage.DriverToClientMessage message);
+  @Override
+  public void send(final ControlMessage.DriverToClientMessage message) {
+  }
 }
