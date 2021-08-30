@@ -144,7 +144,7 @@ public final class CompilerTestUtil {
     return compileDAG(mlrArgBuilder.build());
   }
 
-  public static IRDAG compileEDGARDAG() throws Exception {
+  public static IRDAG compileWindowedWordcountIntermediateAccumulationDAG() throws Exception {
     final String input = ROOT_DIR + "/examples/resources/inputs/test_input_windowed_wordcount";
     final String windowType = "fixed";
     final String inputType = "bounded";

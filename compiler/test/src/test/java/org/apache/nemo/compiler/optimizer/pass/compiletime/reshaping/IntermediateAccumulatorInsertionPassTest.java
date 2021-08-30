@@ -44,7 +44,7 @@ public class IntermediateAccumulatorInsertionPassTest {
 
   @Before
   public void setUp() throws Exception {
-    compiledDAG = CompilerTestUtil.compileEDGARDAG();
+    compiledDAG = CompilerTestUtil.compileWindowedWordcountIntermediateAccumulationDAG();
   }
 
   @Test
