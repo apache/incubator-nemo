@@ -83,7 +83,7 @@ public final class Latencymark implements Serializable {
 
   @Override
   public String toString() {
-    return String.valueOf("Latencymark(" + createdtaskId + ", " + timestamp + ")");
+    return "Latencymark(" + createdtaskId + ", " + timestamp + ")";
   }
 
   @Override
