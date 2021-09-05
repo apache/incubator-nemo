@@ -167,11 +167,6 @@ public final class GBKTransform<K, InputT, OutputT>
     checkAndFinishBundle();
   }
 
-  @Override
-  public void onLatencymark(final Latencymark latencymark) {
-    getOutputCollector().emitLatencymark(latencymark);
-  }
-
   /**
    * This advances the input watermark and processing time to the timestamp max value
    * in order to emit all data.

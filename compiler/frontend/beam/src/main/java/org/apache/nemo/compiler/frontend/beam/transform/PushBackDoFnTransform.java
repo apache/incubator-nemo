@@ -161,13 +161,6 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
     checkAndFinishBundle();
   }
 
-
-  @Override
-  public void onLatencymark(final Latencymark latencymark) {
-    getOutputCollector().emitLatencymark(latencymark);
-  }
-
-
   @Override
   protected void beforeClose() {
     // This makes all unavailable side inputs as available empty side inputs.
