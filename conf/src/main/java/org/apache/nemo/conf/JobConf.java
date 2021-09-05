@@ -255,7 +255,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * Period how often stream metrics are recorded. the unit of period is millisecond.
    * -1 indicates that metrics are not recorded periodically.
    */
-  @NamedParameter(doc = "Period how often stream-related metrics are recorded. the unit of period is millisecond.",
+  @NamedParameter(doc = "Period how often stream-related metrics are recorded. The unit of period is millisecond.",
     short_name = "stream_metric_period", default_value = "-1")
   public final class StreamMetricPeriod implements Name<Integer> {
   }
@@ -264,7 +264,7 @@ public final class JobConf extends ConfigurationModuleBuilder {
    * Period how often latencymarks are sent from source vertex. the unit of period is millisecond.
    * -1 indicates that latencymarks are not sent.
    */
-  @NamedParameter(doc = "Period how often latencymarks are sent from source vertex. the unit of period is millisecond.",
+  @NamedParameter(doc = "Period how often latencymarks are sent from source vertex. The unit of period is millisecond.",
     short_name = "latencymark_period", default_value = "-1")
   public final class LatencyMarkPeriod implements Name<Integer> {
   }
