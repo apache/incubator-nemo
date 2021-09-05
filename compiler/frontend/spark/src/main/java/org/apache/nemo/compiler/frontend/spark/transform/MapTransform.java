@@ -18,9 +18,7 @@
  */
 package org.apache.nemo.compiler.frontend.spark.transform;
 
-import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.punctuation.Latencymark;
+import org.apache.nemo.common.ir.vertex.transform.LatencymarkEmitTransform;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.spark.api.java.function.Function;
 
@@ -30,9 +28,8 @@ import org.apache.spark.api.java.function.Function;
  * @param <I> input type.
  * @param <O> output type.
  */
-public final class MapTransform<I, O> implements Transform<I, O> {
+public final class MapTransform<I, O> extends LatencymarkEmitTransform<I, O> {
   private final Function<I, O> func;
-  private OutputCollector<O> outputCollector;
 
   /**
    * Constructor.
@@ -44,14 +41,9 @@ public final class MapTransform<I, O> implements Transform<I, O> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<O> oc) {
-    this.outputCollector = oc;
-  }
-
-  @Override
   public void onData(final I element) {
     try {
-      outputCollector.emit(func.call(element));
+      getOutputCollector().emit(func.call(element));
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -59,12 +51,7 @@ public final class MapTransform<I, O> implements Transform<I, O> {
 
   @Override
   public void onWatermark(final Watermark watermark) {
-    outputCollector.emitWatermark(watermark);
-  }
-
-  @Override
-  public void onLatencymark(final Latencymark latencymark) {
-    outputCollector.emitLatencymark(latencymark);
+    getOutputCollector().emitWatermark(watermark);
   }
 
   @Override

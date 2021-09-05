@@ -18,9 +18,7 @@
  */
 package org.apache.nemo.compiler.frontend.beam.transform;
 
-import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.punctuation.Latencymark;
+import org.apache.nemo.common.ir.vertex.transform.LatencymarkEmitTransform;
 import org.apache.nemo.common.punctuation.Watermark;
 
 /**
@@ -28,8 +26,7 @@ import org.apache.nemo.common.punctuation.Watermark;
  *
  * @param <T> input/output type.
  */
-public final class FlattenTransform<T> implements Transform<T, T> {
-  private OutputCollector<T> outputCollector;
+public final class FlattenTransform<T> extends LatencymarkEmitTransform<T, T> {
 
   /**
    * FlattenTransform Constructor.
@@ -39,23 +36,13 @@ public final class FlattenTransform<T> implements Transform<T, T> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<T> oc) {
-    this.outputCollector = oc;
-  }
-
-  @Override
   public void onData(final T element) {
-    outputCollector.emit(element);
+    getOutputCollector().emit(element);
   }
 
   @Override
   public void onWatermark(final Watermark watermark) {
-    outputCollector.emitWatermark(watermark);
-  }
-
-  @Override
-  public void onLatencymark(final Latencymark latencymark) {
-    outputCollector.emitLatencymark(latencymark);
+    getOutputCollector().emitWatermark(watermark);
   }
 
   @Override

@@ -24,9 +24,7 @@ import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.transforms.windowing.WindowFn;
 import org.apache.beam.sdk.util.WindowedValue;
-import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.punctuation.Latencymark;
+import org.apache.nemo.common.ir.vertex.transform.LatencymarkEmitTransform;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.joda.time.Instant;
 
@@ -41,10 +39,9 @@ import java.util.Collection;
  * @param <W> window type
  */
 public final class WindowFnTransform<T, W extends BoundedWindow>
-  implements Transform<WindowedValue<T>, WindowedValue<T>> {
+  extends LatencymarkEmitTransform<WindowedValue<T>, WindowedValue<T>> {
   private final WindowFn windowFn;
   private final DisplayData displayData;
-  private OutputCollector<WindowedValue<T>> outputCollector;
 
   /**
    * Default Constructor.
@@ -55,11 +52,6 @@ public final class WindowFnTransform<T, W extends BoundedWindow>
   public WindowFnTransform(final WindowFn windowFn, final DisplayData displayData) {
     this.windowFn = windowFn;
     this.displayData = displayData;
-  }
-
-  @Override
-  public void prepare(final Context context, final OutputCollector<WindowedValue<T>> oc) {
-    this.outputCollector = oc;
   }
 
   @Override
@@ -90,7 +82,7 @@ public final class WindowFnTransform<T, W extends BoundedWindow>
             });
 
       // Emit compressed windows for efficiency
-      outputCollector.emit(WindowedValue.of(element, timestamp, windows, PaneInfo.NO_FIRING));
+      getOutputCollector().emit(WindowedValue.of(element, timestamp, windows, PaneInfo.NO_FIRING));
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }
@@ -98,12 +90,7 @@ public final class WindowFnTransform<T, W extends BoundedWindow>
 
   @Override
   public void onWatermark(final Watermark watermark) {
-    outputCollector.emitWatermark(watermark);
-  }
-
-  @Override
-  public void onLatencymark(final Latencymark latencymark) {
-    outputCollector.emitLatencymark(latencymark);
+    getOutputCollector().emitWatermark(watermark);
   }
 
   @Override

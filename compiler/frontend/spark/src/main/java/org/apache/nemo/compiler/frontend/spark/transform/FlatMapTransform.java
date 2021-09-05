@@ -18,9 +18,7 @@
  */
 package org.apache.nemo.compiler.frontend.spark.transform;
 
-import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.punctuation.Latencymark;
+import org.apache.nemo.common.ir.vertex.transform.LatencymarkEmitTransform;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.spark.api.java.function.FlatMapFunction;
 
@@ -30,9 +28,8 @@ import org.apache.spark.api.java.function.FlatMapFunction;
  * @param <T> input type.
  * @param <U> output type.
  */
-public final class FlatMapTransform<T, U> implements Transform<T, U> {
+public final class FlatMapTransform<T, U> extends LatencymarkEmitTransform<T, U> {
   private final FlatMapFunction<T, U> func;
-  private OutputCollector<U> outputCollector;
 
   /**
    * Constructor.
@@ -44,14 +41,9 @@ public final class FlatMapTransform<T, U> implements Transform<T, U> {
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<U> oc) {
-    this.outputCollector = oc;
-  }
-
-  @Override
   public void onData(final T element) {
     try {
-      func.call(element).forEachRemaining(outputCollector::emit);
+      func.call(element).forEachRemaining(getOutputCollector()::emit);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -59,12 +51,7 @@ public final class FlatMapTransform<T, U> implements Transform<T, U> {
 
   @Override
   public void onWatermark(final Watermark watermark) {
-    outputCollector.emitWatermark(watermark);
-  }
-
-  @Override
-  public void onLatencymark(final Latencymark latencymark) {
-    outputCollector.emitLatencymark(latencymark);
+    getOutputCollector().emitWatermark(watermark);
   }
 
   @Override
