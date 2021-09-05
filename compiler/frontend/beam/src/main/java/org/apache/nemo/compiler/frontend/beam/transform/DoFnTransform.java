@@ -96,9 +96,7 @@ public final class DoFnTransform<InputT, OutputT> extends AbstractDoFnTransform<
 
   @Override
   public void onLatencymark(final Latencymark latencymark) {
-    checkAndInvokeBundle();
     getOutputCollector().emitLatencymark(latencymark);
-    checkAndFinishBundle();
   }
 
   @Override

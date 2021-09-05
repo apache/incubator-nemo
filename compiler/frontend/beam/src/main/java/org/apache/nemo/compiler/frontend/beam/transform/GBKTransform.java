@@ -169,9 +169,7 @@ public final class GBKTransform<K, InputT, OutputT>
 
   @Override
   public void onLatencymark(final Latencymark latencymark) {
-    checkAndInvokeBundle();
     getOutputCollector().emitLatencymark(latencymark);
-    checkAndFinishBundle();
   }
 
   /**

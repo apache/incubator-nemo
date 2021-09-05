@@ -164,9 +164,7 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
 
   @Override
   public void onLatencymark(final Latencymark latencymark) {
-    checkAndInvokeBundle();
     getOutputCollector().emitLatencymark(latencymark);
-    checkAndFinishBundle();
   }
 
 
