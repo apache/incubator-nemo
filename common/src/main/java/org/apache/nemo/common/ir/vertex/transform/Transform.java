@@ -58,6 +58,11 @@ public interface Transform<I, O> extends Serializable {
    */
   void onWatermark(Watermark watermark);
 
+  /**
+   * On latencymark received.
+   *
+   * @param latencymark latencymark.
+   */
   void onLatencymark(Latencymark latencymark);
 
   /**
