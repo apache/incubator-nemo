@@ -21,9 +21,9 @@ package org.apache.nemo.runtime.common.metric;
 import java.io.Serializable;
 
 /**
- * Metric associated with stream. it is periodically recorded.
+ * Metrics associated with stream. It is periodically recorded.
  */
-public class StreamMetric implements Serializable {
+public final class StreamMetric implements Serializable {
   private final long startTimeStamp;
   private final long endTimeStamp;
   private final long numOfReadTuples;

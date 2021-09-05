@@ -36,8 +36,17 @@ public class TaskMetric implements StateMetric<TaskState.State> {
   private String containerId = "";
   private int scheduleAttempt = -1;
   private List<StateTransitionEvent<TaskState.State>> stateTransitionEvents = new ArrayList<>();
+
+  /**
+   * Source Vertex Id of data fetcher to List of stream metrics.
+   */
   private final Map<String, List<StreamMetric>> streamMetrics = new HashMap<>();
-  private Map<String, List<LatencyMetric>> latencymarks = new HashMap<>();
+
+  /**
+   * Source Vertex Id of data fetcher to List of latency metrics.
+   */
+  private final Map<String, List<LatencyMetric>> latencymarks = new HashMap<>();
+
   private long taskDuration = -1;
   private long taskCPUTime = -1;
   private long schedulingOverhead = -1;

@@ -23,9 +23,10 @@ import org.apache.nemo.common.punctuation.Latencymark;
 import java.io.Serializable;
 
 /**
- * Metric class for latency.
+ * Metric class for recording latencymark and the time when the latencymark is recorded.
+ * The traversal time can be calculated by comparing the time when the latencymark was created with the time recorded.
  */
-public class LatencyMetric implements Serializable {
+public final class LatencyMetric implements Serializable {
   private Latencymark latencymark;
   private long timestamp;
 
