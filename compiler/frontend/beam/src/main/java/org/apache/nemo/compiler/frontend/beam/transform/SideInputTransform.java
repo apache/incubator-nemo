@@ -29,7 +29,8 @@ import org.apache.nemo.compiler.frontend.beam.SideInputElement;
  *
  * @param <T> input/output type.
  */
-public final class SideInputTransform<T> extends LatencymarkEmitTransform<WindowedValue<T>, WindowedValue<SideInputElement<T>>> {
+public final class SideInputTransform<T>
+  extends LatencymarkEmitTransform<WindowedValue<T>, WindowedValue<SideInputElement<T>>> {
   private final int index;
 
   /**

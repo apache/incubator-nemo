@@ -314,7 +314,11 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     return outputCollector;
   }
 
-
+  /**
+   * On latencymark received.
+   *
+   * @param latencymark latencymark.
+   */
   @Override
   public void onLatencymark(final Latencymark latencymark) {
     getOutputCollector().emitLatencymark(latencymark);

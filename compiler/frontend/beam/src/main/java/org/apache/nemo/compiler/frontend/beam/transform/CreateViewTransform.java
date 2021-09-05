@@ -37,7 +37,8 @@ import java.util.*;
  * @param <I> input type
  * @param <O> materialized output type
  */
-public final class CreateViewTransform<I, O> extends LatencymarkEmitTransform<WindowedValue<KV<?, I>>, WindowedValue<O>> {
+public final class CreateViewTransform<I, O>
+  extends LatencymarkEmitTransform<WindowedValue<KV<?, I>>, WindowedValue<O>> {
   private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
   private final Map<BoundedWindow, List<I>> windowListMap;
 
