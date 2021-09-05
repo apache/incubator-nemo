@@ -23,10 +23,7 @@ import org.apache.nemo.runtime.common.state.TaskState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Metric class for {@link org.apache.nemo.runtime.common.plan.Task}.
@@ -129,7 +126,7 @@ public class TaskMetric implements StateMetric<TaskState.State> {
   private void setStreamMetric(final Map<String, StreamMetric> streamMetricMap) {
     for (String sourceVertexId : streamMetricMap.keySet()) {
       StreamMetric streamMetric = streamMetricMap.get(sourceVertexId);
-      this.streamMetrics.putIfAbsent(sourceVertexId, new ArrayList<>());
+      this.streamMetrics.putIfAbsent(sourceVertexId, new LinkedList<>());
       this.streamMetrics.get(sourceVertexId).add(streamMetric);
     }
   }
@@ -142,7 +139,7 @@ public class TaskMetric implements StateMetric<TaskState.State> {
   }
 
   private void addLatencymark(final LatencyMetric latencyMetric) {
-    this.latencymarks.putIfAbsent(latencyMetric.getLatencymark().getLastTaskId(), new ArrayList<>());
+    this.latencymarks.putIfAbsent(latencyMetric.getLatencymark().getLastTaskId(), new LinkedList<>());
     this.latencymarks.get(latencyMetric.getLatencymark().getLastTaskId()).add(latencyMetric);
   }
 
