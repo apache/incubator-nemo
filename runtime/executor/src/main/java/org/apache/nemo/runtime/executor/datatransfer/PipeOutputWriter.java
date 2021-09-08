@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -110,6 +111,11 @@ public final class PipeOutputWriter implements OutputWriter {
 
   @Override
   public Optional<Long> getWrittenBytes() {
+    return Optional.empty();
+  }
+
+  @Override
+  public Optional<Map<Integer, Long>> getPartitionSizeMap() {
     return Optional.empty();
   }
 
