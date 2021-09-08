@@ -20,6 +20,7 @@ package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.runtime.executor.MetricMessageSender;
 
 import java.io.IOException;
 
@@ -48,6 +49,21 @@ abstract class DataFetcher implements AutoCloseable {
    * @throws java.util.NoSuchElementException if no more element is available
    */
   abstract Object fetchDataElement() throws IOException;
+
+  /**
+   * Identical with fetchDataElement(), except it sends intermediate serializedReadBytes to MetricStore
+   * on every iterator advance.
+   * This method is for WorkStealing implementation in Nemo.
+   *
+   * @param taskId                            task id
+   * @param metricMessageSender               metricMessageSender
+   *
+   * @return data element
+   * @throws IOException                      upon I/O error
+   * @throws java.util.NoSuchElementException if no more element is available
+   */
+  abstract Object fetchDataElementWithTrace(String taskId,
+                                            MetricMessageSender metricMessageSender) throws IOException;
 
   OutputCollector getOutputCollector() {
     return outputCollector;

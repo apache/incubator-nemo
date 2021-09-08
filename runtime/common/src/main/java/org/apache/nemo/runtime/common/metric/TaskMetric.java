@@ -49,6 +49,9 @@ public class TaskMetric implements StateMetric<TaskState.State> {
   private long shuffleReadTime = -1;
   private long shuffleWriteBytes = -1;
   private long shuffleWriteTime = -1;
+  private int currentIteratorIndex = -1;
+  private int totalIteratorNumber = -1;
+  private long taskPreparationTime = -1;
 
   private static final Logger LOG = LoggerFactory.getLogger(TaskMetric.class.getName());
 
@@ -252,6 +255,30 @@ public class TaskMetric implements StateMetric<TaskState.State> {
     this.shuffleWriteTime = shuffleWriteTime;
   }
 
+  public final int getCurrentIteratorIndex() {
+    return this.currentIteratorIndex;
+  }
+
+  private void setCurrentIteratorIndex(final int currentIteratorIndex) {
+    this.currentIteratorIndex = currentIteratorIndex;
+  }
+
+  public final int getTotalIteratorNumber() {
+    return this.totalIteratorNumber;
+  }
+
+  private void setTotalIteratorNumber(final int totalIteratorNumber) {
+    this.totalIteratorNumber = totalIteratorNumber;
+  }
+
+  public final long getTaskPreparationTime() {
+    return this.taskPreparationTime;
+  }
+
+  private void setTaskPreparationTime(final long taskPreparationTime) {
+    this.taskPreparationTime = taskPreparationTime;
+  }
+
   @Override
   public final String getId() {
     return id;
@@ -317,6 +344,14 @@ public class TaskMetric implements StateMetric<TaskState.State> {
       case "shuffleWriteTime":
         setShuffleWriteTime(SerializationUtils.deserialize(metricValue));
         break;
+      case "currentIteratorIndex":
+        setCurrentIteratorIndex(SerializationUtils.deserialize(metricValue));
+        break;
+      case "totalIteratorNumber":
+        setTotalIteratorNumber(SerializationUtils.deserialize(metricValue));
+        break;
+      case "taskPreparationTime":
+        setTaskPreparationTime(SerializationUtils.deserialize(metricValue));
       default:
         LOG.warn("metricField {} is not supported.", metricField);
         return false;
