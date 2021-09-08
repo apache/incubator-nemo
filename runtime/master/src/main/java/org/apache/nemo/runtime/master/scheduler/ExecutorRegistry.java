@@ -126,6 +126,14 @@ public final class ExecutorRegistry {
       .collect(Collectors.toSet());
   }
 
+  public int getTotalNumberOfExecutorSlots() {
+    return getRunningExecutors().stream().mapToInt(ExecutorRepresenter::getExecutorCapacity).sum();
+  }
+
+  public boolean isExecutorSlotAvailable() {
+    return getRunningExecutors().stream().anyMatch(ExecutorRepresenter::isExecutorSlotAvailable);
+  }
+
   @Override
   public String toString() {
     return executors.toString();
