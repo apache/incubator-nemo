@@ -22,8 +22,7 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Latencymark;
 
 /**
- * This transform does not emit watermarks.
- * It may be a transform for batch operation that emits collected data when calling {@link Transform#close()}.
+ * This transform emits {@link Latencymark}.
  *
  * @param <I> input type
  * @param <O> output type

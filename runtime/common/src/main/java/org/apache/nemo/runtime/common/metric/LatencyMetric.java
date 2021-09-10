@@ -27,13 +27,13 @@ import java.io.Serializable;
  * The traversal time can be calculated by comparing the time when the latencymark was created with the time recorded.
  */
 public final class LatencyMetric implements Serializable {
-  private Latencymark latencymark;
-  private long timestamp;
+  private final Latencymark latencymark;
+  private final long timestamp;
 
   /**
    * Constructor with the latencymark and timestamp.
    *
-   * @param latencymark the latencymark what task received.
+   * @param latencymark the latencymark to record.
    * @param timestamp When the latencymark was received.
    */
   public LatencyMetric(final Latencymark latencymark, final long timestamp) {

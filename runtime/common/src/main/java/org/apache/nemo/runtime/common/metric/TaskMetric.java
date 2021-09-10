@@ -118,16 +118,18 @@ public class TaskMetric implements StateMetric<TaskState.State> {
 
   /**
    * Method related to stream metric.
+   *
+   * @return the streamMetrics
    */
   public final Map<String, List<StreamMetric>> getStreamMetric() {
-    return this.streamMetrics;
+    return streamMetrics;
   }
 
   private void setStreamMetric(final Map<String, StreamMetric> streamMetricMap) {
     for (String sourceVertexId : streamMetricMap.keySet()) {
       StreamMetric streamMetric = streamMetricMap.get(sourceVertexId);
-      this.streamMetrics.putIfAbsent(sourceVertexId, new LinkedList<>());
-      this.streamMetrics.get(sourceVertexId).add(streamMetric);
+      streamMetrics.putIfAbsent(sourceVertexId, new LinkedList<>());
+      streamMetrics.get(sourceVertexId).add(streamMetric);
     }
   }
 
@@ -135,12 +137,12 @@ public class TaskMetric implements StateMetric<TaskState.State> {
    * Method related to latency.
    */
   public final Map<String, List<LatencyMetric>> getLatencymarks() {
-    return this.latencymarks;
+    return latencymarks;
   }
 
   private void addLatencymark(final LatencyMetric latencyMetric) {
-    this.latencymarks.putIfAbsent(latencyMetric.getLatencymark().getLastTaskId(), new LinkedList<>());
-    this.latencymarks.get(latencyMetric.getLatencymark().getLastTaskId()).add(latencyMetric);
+    latencymarks.putIfAbsent(latencyMetric.getLatencymark().getLastTaskId(), new LinkedList<>());
+    latencymarks.get(latencyMetric.getLatencymark().getLastTaskId()).add(latencyMetric);
   }
 
   /**
