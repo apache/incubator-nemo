@@ -158,7 +158,11 @@ public final class TaskExecutor {
     this.timeSinceLastExecution = System.currentTimeMillis();
   }
 
-  // Send stream metric to the runtime master
+  /**
+   * Send stream metric to the runtime master.
+   * This method should be called only on a different thread with taskExecutor.
+   * Because this method can greatly affect to the performance.
+   */
   private void saveStreamMetric() {
     long currentTimestamp = System.currentTimeMillis();
 
