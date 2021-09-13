@@ -53,8 +53,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Executor.
@@ -63,13 +67,13 @@ public final class Executor {
   private static final Logger LOG = LoggerFactory.getLogger(Executor.class.getName());
 
   private final String executorId;
-  private final int streamMetricPeriod;
   private final int latencyMarkSendPeriod;
 
   /**
    * To be used for a thread pool to execute tasks.
    */
   private final ExecutorService executorService;
+  private ScheduledExecutorService periodicMetricService = null;
 
   /**
    * In charge of this executor's intermediate data transfer.
@@ -87,9 +91,11 @@ public final class Executor {
 
   private final MetricMessageSender metricMessageSender;
 
+  private static final List<TaskExecutor> TASK_EXECUTOR_LIST = new ArrayList<>();
+
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
-                   @Parameter(JobConf.StreamMetricPeriod.class) final int streamMetricPeriod,
+                   @Parameter(JobConf.StreamMetricPeriod.class) final int streamMetricRecordPeriod,
                    @Parameter(JobConf.LatencyMarkPeriod.class) final int latencyMarkSendPeriod,
                    final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                    final MessageEnvironment messageEnvironment,
@@ -98,7 +104,6 @@ public final class Executor {
                    final BroadcastManagerWorker broadcastManagerWorker,
                    final MetricManagerWorker metricMessageSender) {
     this.executorId = executorId;
-    this.streamMetricPeriod = streamMetricPeriod;
     this.latencyMarkSendPeriod = latencyMarkSendPeriod;
     this.executorService = Executors.newCachedThreadPool(new BasicThreadFactory.Builder()
       .namingPattern("TaskExecutor thread-%d")
@@ -109,6 +114,17 @@ public final class Executor {
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.metricMessageSender = metricMessageSender;
     messageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID, new ExecutorMessageReceiver());
+
+    // set the interval for recording stream metric
+    if (streamMetricRecordPeriod > 0) {
+      this.periodicMetricService = Executors.newScheduledThreadPool(1);
+      this.periodicMetricService.scheduleAtFixedRate(
+        this::sendStreamMetric, 0, streamMetricRecordPeriod, TimeUnit.MILLISECONDS);
+    }
+  }
+
+  private void sendStreamMetric() {
+    TASK_EXECUTOR_LIST.forEach(TaskExecutor::sendStreamMetric);
   }
 
   public String getExecutorId() {
@@ -154,8 +170,10 @@ public final class Executor {
           e.getPropertyValue(CompressionProperty.class).orElse(null),
           e.getPropertyValue(DecompressionProperty.class).orElse(null))));
 
-      new TaskExecutor(task, irDag, taskStateManager, intermediateDataIOFactory, broadcastManagerWorker,
-        metricMessageSender, persistentConnectionToMasterMap, streamMetricPeriod, latencyMarkSendPeriod).execute();
+      final TaskExecutor executor = new TaskExecutor(task, irDag, taskStateManager, intermediateDataIOFactory,
+        broadcastManagerWorker, metricMessageSender, persistentConnectionToMasterMap, latencyMarkSendPeriod);
+      TASK_EXECUTOR_LIST.add(executor);
+      executor.execute();
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
         ControlMessage.Message.newBuilder()
@@ -205,6 +223,7 @@ public final class Executor {
 
   public void terminate() {
     try {
+      periodicMetricService.shutdown();
       metricMessageSender.close();
     } catch (final UnknownFailureCauseException e) {
       throw new UnknownFailureCauseException(

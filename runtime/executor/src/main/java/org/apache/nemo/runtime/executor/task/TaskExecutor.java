@@ -58,9 +58,6 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -82,7 +79,6 @@ public final class TaskExecutor {
   private final List<VertexHarness> sortedHarnesses;
 
   // Metrics information
-  private ScheduledExecutorService periodicMetricService = null;
 
   private long boundedSourceReadTime = 0;
   private long serializedReadBytes = 0;
@@ -117,7 +113,6 @@ public final class TaskExecutor {
                       final BroadcastManagerWorker broadcastManagerWorker,
                       final MetricMessageSender metricMessageSender,
                       final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
-                      final int streamMetricRecordPeriod,
                       final int latencyMarkPeriod) {
     // Essential information
     this.isExecuted = false;
@@ -147,14 +142,8 @@ public final class TaskExecutor {
       this.numOfReadTupleMap.put(dataFetcher.getDataSource().getId(), new AtomicLong());
       this.lastSerializedReadByteMap.put(dataFetcher.getDataSource().getId(), 0L);
     }
-
     // set the interval for recording stream metric
-    if (streamMetricRecordPeriod > 0) {
-      this.timeSinceLastRecordStreamMetric = System.currentTimeMillis();
-      this.periodicMetricService = Executors.newScheduledThreadPool(1);
-      this.periodicMetricService.scheduleAtFixedRate(
-        this::saveStreamMetric, 0, streamMetricRecordPeriod, TimeUnit.MILLISECONDS);
-    }
+    this.timeSinceLastRecordStreamMetric = System.currentTimeMillis();
     this.timeSinceLastExecution = System.currentTimeMillis();
   }
 
@@ -163,7 +152,7 @@ public final class TaskExecutor {
    * This method should be called only on a different thread with taskExecutor.
    * Because this method can greatly affect to the performance.
    */
-  private void saveStreamMetric() {
+  public void sendStreamMetric() {
     long currentTimestamp = System.currentTimeMillis();
 
     Map<String, StreamMetric> streamMetricMap = new HashMap<>();
