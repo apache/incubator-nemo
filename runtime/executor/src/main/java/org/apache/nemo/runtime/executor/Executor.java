@@ -86,7 +86,7 @@ public final class Executor {
 
   private final MetricMessageSender metricMessageSender;
 
-  private final ConcurrentLinkedQueue<TaskExecutor> TASK_EXECUTOR_LIST = new ConcurrentLinkedQueue<>();
+  private final ConcurrentLinkedQueue<TaskExecutor> taskExecutorList = new ConcurrentLinkedQueue<>();
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -119,7 +119,7 @@ public final class Executor {
   }
 
   private void sendStreamMetric() {
-    TASK_EXECUTOR_LIST.forEach(TaskExecutor::sendStreamMetric);
+    taskExecutorList.forEach(TaskExecutor::sendStreamMetric);
   }
 
   public String getExecutorId() {
@@ -167,7 +167,7 @@ public final class Executor {
 
       final TaskExecutor executor = new TaskExecutor(task, irDag, taskStateManager, intermediateDataIOFactory,
         broadcastManagerWorker, metricMessageSender, persistentConnectionToMasterMap, latencyMarkSendPeriod);
-      TASK_EXECUTOR_LIST.add(executor);
+      taskExecutorList.add(executor);
       executor.execute();
     } catch (final Exception e) {
       persistentConnectionToMasterMap.getMessageSender(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID).send(
