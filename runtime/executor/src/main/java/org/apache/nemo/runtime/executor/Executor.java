@@ -53,12 +53,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 /**
  * Executor.
@@ -91,7 +86,7 @@ public final class Executor {
 
   private final MetricMessageSender metricMessageSender;
 
-  private static final List<TaskExecutor> TASK_EXECUTOR_LIST = new ArrayList<>();
+  private static final ConcurrentLinkedQueue<TaskExecutor> TASK_EXECUTOR_LIST = new ConcurrentLinkedQueue<>();
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
@@ -223,7 +218,9 @@ public final class Executor {
 
   public void terminate() {
     try {
-      periodicMetricService.shutdown();
+      if (periodicMetricService != null) {
+        periodicMetricService.shutdown();
+      }
       metricMessageSender.close();
     } catch (final UnknownFailureCauseException e) {
       throw new UnknownFailureCauseException(
