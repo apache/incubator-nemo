@@ -86,7 +86,7 @@ public final class Executor {
 
   private final MetricMessageSender metricMessageSender;
 
-  private static final ConcurrentLinkedQueue<TaskExecutor> TASK_EXECUTOR_LIST = new ConcurrentLinkedQueue<>();
+  private final ConcurrentLinkedQueue<TaskExecutor> TASK_EXECUTOR_LIST = new ConcurrentLinkedQueue<>();
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
