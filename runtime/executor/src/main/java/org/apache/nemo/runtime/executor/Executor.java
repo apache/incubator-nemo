@@ -53,6 +53,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.*;
 
 /**
@@ -86,7 +88,7 @@ public final class Executor {
 
   private final MetricMessageSender metricMessageSender;
 
-  private final ConcurrentLinkedQueue<TaskExecutor> taskExecutorList = new ConcurrentLinkedQueue<>();
+  private final List<TaskExecutor> taskExecutorList = new ArrayList<>();
 
   @Inject
   private Executor(@Parameter(JobConf.ExecutorId.class) final String executorId,
