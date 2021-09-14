@@ -488,8 +488,8 @@ public final class TaskExecutor {
       LatencyMetric metric = new LatencyMetric((Latencymark) event, System.currentTimeMillis());
       metricMessageSender.send(TASK_METRIC_ID, taskId, "latencymark", SerializationUtils.serialize(metric));
 
-      // set lastTaskId of latencymark for next task.
-      ((Latencymark) event).setLastTaskId(taskId);
+      // set previousTaskId of latencymark for next task.
+      ((Latencymark) event).setPreviousTaskId(taskId);
 
       processLatencymark(dataFetcher.getOutputCollector(), (Latencymark) event);
     } else if (event instanceof Watermark) {
