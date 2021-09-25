@@ -26,7 +26,7 @@ import java.util.Objects;
  * It is created only from source vertex and record the timestamp when it is created and taskId where it is created.
  */
 public final class Latencymark implements Serializable {
-  private final String createdtaskId;
+  private final String createdTaskId;
   private String previousTaskId;
   private final long timestamp;
 
@@ -35,7 +35,7 @@ public final class Latencymark implements Serializable {
    * @param timestamp timestamp when it is created
    */
   public Latencymark(final String taskId, final long timestamp) {
-    this.createdtaskId = taskId;
+    this.createdTaskId = taskId;
     this.timestamp = timestamp;
     this.previousTaskId = "";
   }
@@ -50,8 +50,8 @@ public final class Latencymark implements Serializable {
   /**
    * @return the task id where it is created
    */
-  public String getCreatedtaskId() {
-    return createdtaskId;
+  public String getCreatedTaskId() {
+    return createdTaskId;
   }
 
 
@@ -76,14 +76,14 @@ public final class Latencymark implements Serializable {
     }
     final Latencymark latencymark = (Latencymark) o;
     return (timestamp == latencymark.timestamp)
-      && (createdtaskId.equals(latencymark.createdtaskId)
+      && (createdTaskId.equals(latencymark.createdTaskId)
       && (previousTaskId.equals(latencymark.previousTaskId)));
   }
 
 
   @Override
   public String toString() {
-    return "Latencymark(" + createdtaskId + ", " + timestamp + ")";
+    return "Latencymark(" + createdTaskId + ", " + timestamp + ")";
   }
 
   @Override
