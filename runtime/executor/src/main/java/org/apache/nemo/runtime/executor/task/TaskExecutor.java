@@ -499,11 +499,11 @@ public final class TaskExecutor {
         latestSentLatencymarkTimestamp.put(latencymark.getCreatedTaskId(), latencymark.getCreatedTimestamp());
 
         // set previousTaskId and timestamp of latencymark for next task.
-        ((Latencymark) event).setPreviousTaskId(taskId);
-        ((Latencymark) event).setPreviousSentTimestamp(currTimestamp);
+        latencymark.setPreviousTaskId(taskId);
+        latencymark.setPreviousSentTimestamp(currTimestamp);
 
         // process latencymark for downstream tasks
-        processLatencymark(dataFetcher.getOutputCollector(), (Latencymark) event);
+        processLatencymark(dataFetcher.getOutputCollector(), latencymark);
       }
     } else if (event instanceof Watermark) {
       // Watermark
