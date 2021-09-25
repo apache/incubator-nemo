@@ -27,9 +27,10 @@ import java.util.Objects;
  */
 public final class Latencymark implements Serializable {
   private final String createdTaskId;
+  private final long createdTimestamp;
   private String previousTaskId;
   private long previousSentTimestamp;
-  private final long createdTimestamp;
+
 
   /**
    * @param taskId task id where it is created
@@ -39,6 +40,7 @@ public final class Latencymark implements Serializable {
     this.createdTaskId = taskId;
     this.createdTimestamp = timestamp;
     this.previousTaskId = "";
+    this.previousSentTimestamp = 0;
   }
 
   /**
@@ -62,10 +64,27 @@ public final class Latencymark implements Serializable {
     return previousTaskId;
   }
 
-  public void setPreviousTaskId(final String currTaskId) {
-    previousTaskId = currTaskId;
+  /**
+   * Set the previousTaskId.
+   *
+   * @param taskId the task id.
+   */
+  public void setPreviousTaskId(final String taskId) {
+    previousTaskId = taskId;
   }
 
+  /**
+   * @return the timestamp when it sent from previous task.
+   */
+  public long getPreviousSentTimestamp() {
+    return previousSentTimestamp;
+  }
+
+  /**
+   * Set the previousSentTimestamp.
+   *
+   * @param timestamp the timestamp.
+   */
   public void setPreviousSentTimestamp(final long timestamp) {
     previousSentTimestamp = timestamp;
   }
