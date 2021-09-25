@@ -133,13 +133,6 @@ public class TaskMetric implements StateMetric<TaskState.State> {
     }
   }
 
-  /**
-   * Method related to latency.
-   */
-  public final Map<String, List<LatencyMetric>> getLatencymarks() {
-    return latencymarks;
-  }
-
   private void addLatencymark(final LatencyMetric latencyMetric) {
     latencymarks.putIfAbsent(latencyMetric.getLatencymark().getPreviousTaskId(), new LinkedList<>());
     latencymarks.get(latencyMetric.getLatencymark().getPreviousTaskId()).add(latencyMetric);

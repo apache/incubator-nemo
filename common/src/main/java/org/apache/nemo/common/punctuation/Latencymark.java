@@ -74,13 +74,6 @@ public final class Latencymark implements Serializable {
   }
 
   /**
-   * @return the timestamp when it sent from previous task.
-   */
-  public long getPreviousSentTimestamp() {
-    return previousSentTimestamp;
-  }
-
-  /**
    * Set the previousSentTimestamp.
    *
    * @param timestamp the timestamp.
