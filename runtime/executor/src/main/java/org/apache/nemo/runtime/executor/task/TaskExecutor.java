@@ -89,6 +89,7 @@ public final class TaskExecutor {
   private final Map<String, Long> lastSerializedReadByteMap;
   private final MetricMessageSender metricMessageSender;
   private long latencyMarkSendPeriod = -1;
+  private final Map<String, Long> latestSentLatencymarkTimestamp;
 
   // Dynamic optimization
   private String idOfVertexPutOnHold;
@@ -120,6 +121,7 @@ public final class TaskExecutor {
     this.taskStateManager = taskStateManager;
     this.broadcastManagerWorker = broadcastManagerWorker;
     this.latencyMarkSendPeriod = latencyMarkPeriod;
+    this.latestSentLatencymarkTimestamp = new HashMap<>();
 
     // Metric sender
     this.metricMessageSender = metricMessageSender;
@@ -485,13 +487,24 @@ public final class TaskExecutor {
         encodedReadBytes += ((MultiThreadParentTaskDataFetcher) dataFetcher).getEncodedBytes();
       }
     } else if (event instanceof Latencymark) {
-      LatencyMetric metric = new LatencyMetric((Latencymark) event, System.currentTimeMillis());
+      Latencymark latencymark = (Latencymark) event;
+      long currTimestamp = System.currentTimeMillis();
+
+      // send latencyMetric to RuntimeMaster
+      LatencyMetric metric = new LatencyMetric(latencymark, currTimestamp);
       metricMessageSender.send(TASK_METRIC_ID, taskId, "latencymark", SerializationUtils.serialize(metric));
 
-      // set previousTaskId of latencymark for next task.
-      ((Latencymark) event).setPreviousTaskId(taskId);
+      long latestSentTimestamp = latestSentLatencymarkTimestamp.getOrDefault(latencymark.getCreatedTaskId(), -1L);
+      if (latestSentTimestamp < latencymark.getCreatedTimestamp()) {
+        latestSentLatencymarkTimestamp.put(latencymark.getCreatedTaskId(), latencymark.getCreatedTimestamp());
 
-      processLatencymark(dataFetcher.getOutputCollector(), (Latencymark) event);
+        // set previousTaskId and timestamp of latencymark for next task.
+        ((Latencymark) event).setPreviousTaskId(taskId);
+        ((Latencymark) event).setPreviousSentTimestamp(currTimestamp);
+
+        // process latencymark for downstream tasks
+        processLatencymark(dataFetcher.getOutputCollector(), (Latencymark) event);
+      }
     } else if (event instanceof Watermark) {
       // Watermark
       processWatermark(dataFetcher.getOutputCollector(), (Watermark) event);

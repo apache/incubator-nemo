@@ -28,7 +28,8 @@ import java.util.Objects;
 public final class Latencymark implements Serializable {
   private final String createdTaskId;
   private String previousTaskId;
-  private final long timestamp;
+  private long previousSentTimestamp;
+  private final long createdTimestamp;
 
   /**
    * @param taskId task id where it is created
@@ -36,15 +37,15 @@ public final class Latencymark implements Serializable {
    */
   public Latencymark(final String taskId, final long timestamp) {
     this.createdTaskId = taskId;
-    this.timestamp = timestamp;
+    this.createdTimestamp = timestamp;
     this.previousTaskId = "";
   }
 
   /**
    * @return the latencymark timestamp
    */
-  public long getTimestamp() {
-    return timestamp;
+  public long getCreatedTimestamp() {
+    return createdTimestamp;
   }
 
   /**
@@ -53,7 +54,6 @@ public final class Latencymark implements Serializable {
   public String getCreatedTaskId() {
     return createdTaskId;
   }
-
 
   /**
    * @return the task id of previous task
@@ -66,6 +66,10 @@ public final class Latencymark implements Serializable {
     previousTaskId = currTaskId;
   }
 
+  public void setPreviousSentTimestamp(final long timestamp) {
+    previousSentTimestamp = timestamp;
+  }
+
   @Override
   public boolean equals(final Object o) {
     if (this == o) {
@@ -75,7 +79,7 @@ public final class Latencymark implements Serializable {
       return false;
     }
     final Latencymark latencymark = (Latencymark) o;
-    return (timestamp == latencymark.timestamp)
+    return (createdTimestamp == latencymark.createdTimestamp)
       && (createdTaskId.equals(latencymark.createdTaskId)
       && (previousTaskId.equals(latencymark.previousTaskId)));
   }
@@ -83,11 +87,11 @@ public final class Latencymark implements Serializable {
 
   @Override
   public String toString() {
-    return "Latencymark(" + createdTaskId + ", " + timestamp + ")";
+    return "Latencymark(" + createdTaskId + ", " + createdTimestamp + ")";
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(timestamp);
+    return Objects.hash(createdTimestamp);
   }
 }
