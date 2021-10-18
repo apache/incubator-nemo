@@ -34,11 +34,14 @@ import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.SignalTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Finishmark;
+import org.apache.nemo.common.punctuation.Latencymark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
 import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import org.apache.nemo.runtime.common.metric.LatencyMetric;
+import org.apache.nemo.runtime.common.metric.StreamMetric;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
 import org.apache.nemo.runtime.common.plan.Task;
@@ -53,7 +56,9 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /**
@@ -74,11 +79,17 @@ public final class TaskExecutor {
   private final List<VertexHarness> sortedHarnesses;
 
   // Metrics information
+
   private long boundedSourceReadTime = 0;
   private long serializedReadBytes = 0;
   private long encodedReadBytes = 0;
   private long timeSinceLastExecution;
+  private long timeSinceLastRecordStreamMetric;
+  private final Map<String, AtomicLong> numOfReadTupleMap;
+  private final Map<String, Long> lastSerializedReadByteMap;
   private final MetricMessageSender metricMessageSender;
+  private long latencyMarkSendPeriod = -1;
+  private final Map<String, Long> latestSentLatencymarkTimestamp;
 
   // Dynamic optimization
   private String idOfVertexPutOnHold;
@@ -102,12 +113,15 @@ public final class TaskExecutor {
                       final IntermediateDataIOFactory intermediateDataIOFactory,
                       final BroadcastManagerWorker broadcastManagerWorker,
                       final MetricMessageSender metricMessageSender,
-                      final PersistentConnectionToMasterMap persistentConnectionToMasterMap) {
+                      final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
+                      final int latencyMarkPeriod) {
     // Essential information
     this.isExecuted = false;
     this.taskId = task.getTaskId();
     this.taskStateManager = taskStateManager;
     this.broadcastManagerWorker = broadcastManagerWorker;
+    this.latencyMarkSendPeriod = latencyMarkPeriod;
+    this.latestSentLatencymarkTimestamp = new HashMap<>();
 
     // Metric sender
     this.metricMessageSender = metricMessageSender;
@@ -123,7 +137,59 @@ public final class TaskExecutor {
     this.dataFetchers = pair.left();
     this.sortedHarnesses = pair.right();
 
+    // initialize metrics
+    this.numOfReadTupleMap = new HashMap<>();
+    this.lastSerializedReadByteMap = new HashMap<>();
+    for (DataFetcher dataFetcher : dataFetchers) {
+      this.numOfReadTupleMap.put(dataFetcher.getDataSource().getId(), new AtomicLong());
+      this.lastSerializedReadByteMap.put(dataFetcher.getDataSource().getId(), 0L);
+    }
+    // set the interval for recording stream metric
+    this.timeSinceLastRecordStreamMetric = System.currentTimeMillis();
     this.timeSinceLastExecution = System.currentTimeMillis();
+  }
+
+  /**
+   * Send stream metric to the runtime master.
+   * This method should be called only on a different thread with taskExecutor.
+   * Because this method can greatly affect to the performance.
+   */
+  public void sendStreamMetric() {
+    long currentTimestamp = System.currentTimeMillis();
+
+    Map<String, StreamMetric> streamMetricMap = new HashMap<>();
+    for (DataFetcher dataFetcher : dataFetchers) {
+      String sourceVertexId = dataFetcher.getDataSource().getId();
+
+      Pair<Boolean, Long> serReadBytes = Pair.of(false, -1L);
+
+      if (dataFetcher instanceof SourceVertexDataFetcher) {
+        serReadBytes = Pair.of(true, 0L);
+      } else if (dataFetcher instanceof ParentTaskDataFetcher) {
+        serReadBytes = ((ParentTaskDataFetcher) dataFetcher).getCurrSerBytes();
+      } else if (dataFetcher instanceof MultiThreadParentTaskDataFetcher) {
+        serReadBytes = ((MultiThreadParentTaskDataFetcher) dataFetcher).getCurrSerBytes();
+      }
+
+      // if serializedReadBytes is -1, it means that serializedReadBytes is invalid
+      if (serReadBytes.right() != -1) {
+        long lastSerializedReadBytes = lastSerializedReadByteMap.get(sourceVertexId);
+        lastSerializedReadByteMap.put(sourceVertexId, serReadBytes.right());
+        serReadBytes = Pair.of(serReadBytes.left(), serReadBytes.right() - lastSerializedReadBytes);
+      }
+
+      long numOfTuples = this.numOfReadTupleMap.get(sourceVertexId).get();
+
+      StreamMetric streamMetric = new StreamMetric(this.timeSinceLastRecordStreamMetric, currentTimestamp, numOfTuples,
+        serReadBytes.right(), serReadBytes.left());
+      streamMetricMap.put(sourceVertexId, streamMetric);
+      numOfReadTupleMap.get(sourceVertexId).addAndGet(-numOfTuples);
+    }
+
+    metricMessageSender.send(TASK_METRIC_ID, taskId, "streamMetric",
+      SerializationUtils.serialize((Serializable) streamMetricMap));
+
+    this.timeSinceLastRecordStreamMetric = currentTimestamp;
   }
 
   // Get all of the intra-task edges + inter-task edges
@@ -236,7 +302,7 @@ public final class TaskExecutor {
         outputCollector = new RunTimeMessageOutputCollector<Map<Object, Long>>(
           taskId, irVertex, persistentConnectionToMasterMap, this, true);
       } else if (irVertex instanceof OperatorVertex
-      && ((OperatorVertex) irVertex).getTransform() instanceof SignalTransform) {
+        && ((OperatorVertex) irVertex).getTransform() instanceof SignalTransform) {
         outputCollector = new RunTimeMessageOutputCollector<Map<String, Long>>(
           taskId, irVertex, persistentConnectionToMasterMap, this, false);
       } else {
@@ -260,7 +326,9 @@ public final class TaskExecutor {
         dataFetcherList.add(new SourceVertexDataFetcher(
           (SourceVertex) irVertex,
           sourceReader.get(),
-          outputCollector));
+          outputCollector,
+          latencyMarkSendPeriod,
+          taskId));
       }
 
       // Parent-task read
@@ -317,6 +385,11 @@ public final class TaskExecutor {
     outputCollector.emitWatermark(watermark);
   }
 
+  private void processLatencymark(final OutputCollector outputCollector,
+                                final Latencymark latencymark) {
+    outputCollector.emitLatencymark(latencymark);
+  }
+
   /**
    * Execute a task, while handling unrecoverable errors and exceptions.
    */
@@ -351,21 +424,16 @@ public final class TaskExecutor {
       return;
     }
 
-    metricMessageSender.send(TASK_METRIC_ID, taskId, "boundedSourceReadTime",
-      SerializationUtils.serialize(boundedSourceReadTime));
-    metricMessageSender.send(TASK_METRIC_ID, taskId, "serializedReadBytes",
-      SerializationUtils.serialize(serializedReadBytes));
-    metricMessageSender.send(TASK_METRIC_ID, taskId, "encodedReadBytes",
-      SerializationUtils.serialize(encodedReadBytes));
+    sendMetrics();
 
     // Phase 2: Finalize task-internal states and elements
     for (final VertexHarness vertexHarness : sortedHarnesses) {
       finalizeVertex(vertexHarness);
     }
 
-    metricMessageSender.send(TASK_METRIC_ID, taskId, "taskDuration",
-      SerializationUtils.serialize(System.currentTimeMillis() - executionStartTime));
     this.timeSinceLastExecution = System.currentTimeMillis();
+    metricMessageSender.send(TASK_METRIC_ID, taskId, "taskDuration",
+      SerializationUtils.serialize(timeSinceLastExecution - executionStartTime));
     if (idOfVertexPutOnHold == null) {
       taskStateManager.onTaskStateChanged(TaskState.State.COMPLETE, Optional.empty(), Optional.empty());
       LOG.info("{} completed", taskId);
@@ -377,6 +445,22 @@ public final class TaskExecutor {
     }
   }
 
+  /**
+   * Send data-processing metrics.
+   */
+  public void sendMetrics() {
+    metricMessageSender.send(TASK_METRIC_ID, taskId, "boundedSourceReadTime",
+      SerializationUtils.serialize(boundedSourceReadTime));
+    metricMessageSender.send(TASK_METRIC_ID, taskId, "serializedReadBytes",
+      SerializationUtils.serialize(serializedReadBytes));
+    metricMessageSender.send(TASK_METRIC_ID, taskId, "encodedReadBytes",
+      SerializationUtils.serialize(encodedReadBytes));
+  }
+
+  /**
+   * Finalize the vertex.
+   * @param vertexHarness the vertex harness.
+   */
   private void finalizeVertex(final VertexHarness vertexHarness) {
     closeTransform(vertexHarness);
     finalizeOutputWriters(vertexHarness);
@@ -402,12 +486,34 @@ public final class TaskExecutor {
         serializedReadBytes += ((MultiThreadParentTaskDataFetcher) dataFetcher).getSerializedBytes();
         encodedReadBytes += ((MultiThreadParentTaskDataFetcher) dataFetcher).getEncodedBytes();
       }
+    } else if (event instanceof Latencymark) {
+      Latencymark latencymark = (Latencymark) event;
+      long currTimestamp = System.currentTimeMillis();
+
+      // send latencyMetric to RuntimeMaster
+      LatencyMetric metric = new LatencyMetric(latencymark, currTimestamp);
+      metricMessageSender.send(TASK_METRIC_ID, taskId, "latencymark", SerializationUtils.serialize(metric));
+
+      long latestSentTimestamp = latestSentLatencymarkTimestamp.getOrDefault(latencymark.getCreatedTaskId(), -1L);
+      if (latestSentTimestamp < latencymark.getCreatedTimestamp()) {
+        latestSentLatencymarkTimestamp.put(latencymark.getCreatedTaskId(), latencymark.getCreatedTimestamp());
+
+        // set previousTaskId and timestamp of latencymark for next task.
+        latencymark.setPreviousTaskId(taskId);
+        latencymark.setPreviousSentTimestamp(currTimestamp);
+
+        // process latencymark for downstream tasks
+        processLatencymark(dataFetcher.getOutputCollector(), latencymark);
+      }
     } else if (event instanceof Watermark) {
       // Watermark
       processWatermark(dataFetcher.getOutputCollector(), (Watermark) event);
     } else {
       // Process data element
       processElement(dataFetcher.getOutputCollector(), event);
+
+      // increase the number of read tuples
+      numOfReadTupleMap.get(dataFetcher.getDataSource().getId()).incrementAndGet();
     }
   }
 
@@ -418,9 +524,7 @@ public final class TaskExecutor {
    * @param currentTime   current time
    * @param prevTime      prev time
    */
-  private boolean isPollingTime(final long pollingPeriod,
-                                final long currentTime,
-                                final long prevTime) {
+  private boolean isPollingTime(final long pollingPeriod, final long currentTime, final long prevTime) {
     return (currentTime - prevTime) >= pollingPeriod;
   }
 
@@ -479,7 +583,6 @@ public final class TaskExecutor {
 
       final Iterator<DataFetcher> pendingIterator = pendingFetchers.iterator();
       final long currentTime = System.currentTimeMillis();
-
 
       if (isPollingTime(pollingInterval, currentTime, prevPollingTime)) {
         // We check pending data every polling interval

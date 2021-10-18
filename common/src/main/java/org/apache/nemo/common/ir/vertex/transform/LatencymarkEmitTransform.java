@@ -16,44 +16,41 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.executor.datatransfer;
+package org.apache.nemo.common.ir.vertex.transform;
 
+import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.Latencymark;
-import org.apache.nemo.common.punctuation.Watermark;
-
-import java.util.Optional;
 
 /**
- * Represents the output data transfer from a task.
+ * This transform emits {@link Latencymark}.
+ *
+ * @param <I> input type
+ * @param <O> output type
  */
-public interface OutputWriter {
-  /**
-   * Writes output element depending on the communication pattern of the edge.
-   *
-   * @param element the element to write.
-   */
-  void write(Object element);
+public abstract class LatencymarkEmitTransform<I, O> implements Transform<I, O> {
+  private OutputCollector<O> outputCollector;
 
   /**
-   * Writes watermarks to all edges.
-   *
-   * @param watermark watermark
+   * @param context context for data transfer.
+   * @param oc OutputCollector to transfer data.
    */
-  void writeWatermark(Watermark watermark);
+  @Override
+  public void prepare(final Context context, final OutputCollector<O> oc) {
+    this.outputCollector = oc;
+  }
 
   /**
-   * Writes latencymark to all edges.
-   * It does not consider buffered time in windows.
-   * transfer to the next task immediately.
-   *
+   * get OutputCollector.
+   */
+  public OutputCollector<O> getOutputCollector() {
+    return outputCollector;
+  }
+
+  /**
    * @param latencymark latencymark
    */
-  void writeLatencymark(Latencymark latencymark);
-
-  /**
-   * @return the total written bytes.
-   */
-  Optional<Long> getWrittenBytes();
-
-  void close();
+  @Override
+  public final void onLatencymark(final Latencymark latencymark) {
+    outputCollector.emitLatencymark(latencymark);
+  }
 }

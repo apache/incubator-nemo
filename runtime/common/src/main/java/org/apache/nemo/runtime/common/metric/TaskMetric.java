@@ -23,8 +23,7 @@ import org.apache.nemo.runtime.common.state.TaskState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 /**
  * Metric class for {@link org.apache.nemo.runtime.common.plan.Task}.
@@ -34,6 +33,17 @@ public class TaskMetric implements StateMetric<TaskState.State> {
   private String containerId = "";
   private int scheduleAttempt = -1;
   private List<StateTransitionEvent<TaskState.State>> stateTransitionEvents = new ArrayList<>();
+
+  /**
+   * Source Vertex Id of data fetcher to List of stream metrics.
+   */
+  private final Map<String, List<StreamMetric>> streamMetrics = new HashMap<>();
+
+  /**
+   * Source Vertex Id of data fetcher to List of latency metrics.
+   */
+  private final Map<String, List<LatencyMetric>> latencymarks = new HashMap<>();
+
   private long taskDuration = -1;
   private long taskCPUTime = -1;
   private long schedulingOverhead = -1;
@@ -104,6 +114,28 @@ public class TaskMetric implements StateMetric<TaskState.State> {
 
   private void setTaskDuration(final long taskDuration) {
     this.taskDuration = taskDuration;
+  }
+
+  /**
+   * Method related to stream metric.
+   *
+   * @return the streamMetrics
+   */
+  public final Map<String, List<StreamMetric>> getStreamMetric() {
+    return streamMetrics;
+  }
+
+  private void setStreamMetric(final Map<String, StreamMetric> streamMetricMap) {
+    for (String sourceVertexId : streamMetricMap.keySet()) {
+      StreamMetric streamMetric = streamMetricMap.get(sourceVertexId);
+      streamMetrics.putIfAbsent(sourceVertexId, new LinkedList<>());
+      streamMetrics.get(sourceVertexId).add(streamMetric);
+    }
+  }
+
+  private void addLatencymark(final LatencyMetric latencyMetric) {
+    latencymarks.putIfAbsent(latencyMetric.getLatencymark().getPreviousTaskId(), new LinkedList<>());
+    latencymarks.get(latencyMetric.getLatencymark().getPreviousTaskId()).add(latencyMetric);
   }
 
   /**
@@ -261,6 +293,12 @@ public class TaskMetric implements StateMetric<TaskState.State> {
   public final boolean processMetricMessage(final String metricField, final byte[] metricValue) {
     LOG.debug("metric {} has just arrived!", metricField);
     switch (metricField) {
+      case "streamMetric":
+        setStreamMetric(SerializationUtils.deserialize(metricValue));
+        break;
+      case "latencymark":
+        addLatencymark(SerializationUtils.deserialize(metricValue));
+        break;
       case "taskDuration":
         setTaskDuration(SerializationUtils.deserialize(metricValue));
         break;

@@ -18,8 +18,7 @@
  */
 package org.apache.nemo.compiler.frontend.spark.transform;
 
-import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.ir.vertex.transform.LatencymarkEmitTransform;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.spark.api.java.function.PairFunction;
 import scala.Tuple2;
@@ -31,9 +30,8 @@ import scala.Tuple2;
  * @param <K> output key type.
  * @param <V> output value type.
  */
-public final class MapToPairTransform<T, K, V> implements Transform<T, Tuple2<K, V>> {
+public final class MapToPairTransform<T, K, V> extends LatencymarkEmitTransform<T, Tuple2<K, V>> {
   private final PairFunction<T, K, V> func;
-  private OutputCollector<Tuple2<K, V>> outputCollector;
 
   /**
    * Constructor.
@@ -45,15 +43,10 @@ public final class MapToPairTransform<T, K, V> implements Transform<T, Tuple2<K,
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<Tuple2<K, V>> oc) {
-    this.outputCollector = oc;
-  }
-
-  @Override
   public void onData(final T element) {
     try {
       Tuple2<K, V> data = func.call(element);
-      outputCollector.emit(data);
+      getOutputCollector().emit(data);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -61,7 +54,7 @@ public final class MapToPairTransform<T, K, V> implements Transform<T, Tuple2<K,
 
   @Override
   public void onWatermark(final Watermark watermark) {
-    outputCollector.emitWatermark(watermark);
+    getOutputCollector().emitWatermark(watermark);
   }
 
   @Override
