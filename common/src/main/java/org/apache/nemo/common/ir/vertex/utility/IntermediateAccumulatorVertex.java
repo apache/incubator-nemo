@@ -24,7 +24,7 @@ import org.apache.nemo.common.ir.vertex.transform.Transform;
 /**
  * During combine transform, accumulates data among physically nearby containers prior to shuffling across WAN.
  */
-public class IntermediateAccumulatorVertex extends OperatorVertex {
+public final class IntermediateAccumulatorVertex extends OperatorVertex {
   /**
    * Constructor.
    */

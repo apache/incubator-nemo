@@ -22,20 +22,23 @@ package org.apache.nemo.common.ir.vertex.executionproperty;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Set;
 
 /**
  * List of set of node names to limit the scheduling of the tasks of the vertex to while shuffling.
- * ShuffleExecutorSetProperty is only for IntermediateAccumulatorVertex.
- * Other vertices must not have this property.
+ * For example, [[1, 2, 3], [4, 5, 6]] limits shuffle to occur just within nodes 1, 2, 3 and nodes 4, 5, 6 separately.
+ * This occurs by limiting the source executors where the tasks read their input data from, depending on
+ * where the task is located at.
+ * ShuffleExecutorSetProperty is set only for the IntermediateAccumulatorVertex, and
+ * other vertices should not have this property.
  */
-public final class ShuffleExecutorSetProperty extends VertexExecutionProperty<ArrayList<HashSet<String>>> {
+public final class ShuffleExecutorSetProperty extends VertexExecutionProperty<ArrayList<Set<String>>> {
 
   /**
    * Default constructor.
    * @param value value of the execution property.
    */
-  private ShuffleExecutorSetProperty(final ArrayList<HashSet<String>> value) {
+  private ShuffleExecutorSetProperty(final ArrayList<Set<String>> value) {
     super(value);
   }
 
@@ -46,7 +49,7 @@ public final class ShuffleExecutorSetProperty extends VertexExecutionProperty<Ar
    *                        Leave empty to make it effectless.
    * @return the new execution property
    */
-  public static ShuffleExecutorSetProperty of(final HashSet<HashSet<String>> setsOfExecutors) {
+  public static ShuffleExecutorSetProperty of(final Set<Set<String>> setsOfExecutors) {
     return new ShuffleExecutorSetProperty(new ArrayList<>(setsOfExecutors));
   }
 }

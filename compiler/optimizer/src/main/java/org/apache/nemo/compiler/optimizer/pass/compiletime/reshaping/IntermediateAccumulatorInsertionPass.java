@@ -28,6 +28,7 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ShuffleExecutorSetProperty;
 import org.apache.nemo.common.ir.vertex.utility.IntermediateAccumulatorVertex;
+import org.apache.nemo.common.test.ExampleTestArgs;
 import org.apache.nemo.compiler.frontend.beam.transform.CombineTransform;
 import org.apache.nemo.compiler.optimizer.pass.compiletime.Requires;
 
@@ -40,17 +41,14 @@ import java.util.stream.IntStream;
  * Pass for inserting intermediate aggregator for partial shuffle.
  */
 @Requires(ParallelismProperty.class)
-public class IntermediateAccumulatorInsertionPass extends ReshapingPass {
+public final class IntermediateAccumulatorInsertionPass extends ReshapingPass {
   private final String networkFilePath;
-  private boolean isUnitTest = false;
-  private static final Map<String, ArrayList<String>> UNIT_TEST_NETWORK_FILE = getUnitTestNetworkFile();
 
   /**
    * Default constructor.
    */
   public IntermediateAccumulatorInsertionPass() {
-    super(IntermediateAccumulatorInsertionPass.class);
-    this.networkFilePath = Util.fetchProjectRootPath() + "/tools/network_profiling/labeldict.json";
+    this(false);
   }
 
   /**
@@ -58,18 +56,12 @@ public class IntermediateAccumulatorInsertionPass extends ReshapingPass {
    * @param isUnitTest indicates unit test.
    */
   public IntermediateAccumulatorInsertionPass(final boolean isUnitTest) {
-    this();
-    this.isUnitTest = isUnitTest;
-  }
-
-  private static Map<String, ArrayList<String>> getUnitTestNetworkFile() {
-    Map<String, ArrayList<String>> map = new HashMap<>();
-    map.put("0", new ArrayList<>(Arrays.asList("mulan-16.maas", "0")));
-    map.put("1", new ArrayList<>(Arrays.asList("mulan-23.maas", "0")));
-    map.put("2", new ArrayList<>(Arrays.asList("mulan-m", "0")));
-    map.put("3", new ArrayList<>(Arrays.asList("1+2", "0.00003721")));
-    map.put("4", new ArrayList<>(Arrays.asList("0+3", "2.19395143")));
-    return map;
+    super(IntermediateAccumulatorInsertionPass.class);
+    if (isUnitTest) {
+      this.networkFilePath = ExampleTestArgs.getFileBasePath() + "inputs/example_labeldict.json";
+    } else {
+      this.networkFilePath = Util.fetchProjectRootPath() + "/tools/network_profiling/labeldict.json";
+    }
   }
 
   /**
@@ -82,12 +74,7 @@ public class IntermediateAccumulatorInsertionPass extends ReshapingPass {
   public IRDAG apply(final IRDAG irdag) {
     try {
       ObjectMapper mapper = new ObjectMapper();
-      Map<String, ArrayList<String>> map;
-      if (isUnitTest) {
-        map = UNIT_TEST_NETWORK_FILE;
-      } else {
-        map = mapper.readValue(new File(networkFilePath), Map.class);
-      }
+      Map<String, List<String>> map = mapper.readValue(new File(networkFilePath), Map.class);
 
       irdag.topologicalDo(v -> {
         if (v instanceof OperatorVertex && ((OperatorVertex) v).getTransform() instanceof CombineTransform) {
@@ -111,7 +98,7 @@ public class IntermediateAccumulatorInsertionPass extends ReshapingPass {
   }
 
   private static void handleDataTransferFor(final IRDAG irdag,
-                                            final Map<String, ArrayList<String>> map,
+                                            final Map<String, List<String>> map,
                                             final CombineTransform finalCombineStreamTransform,
                                             final IREdge targetEdge,
                                             final Float threshold) {
@@ -126,7 +113,7 @@ public class IntermediateAccumulatorInsertionPass extends ReshapingPass {
       if (previousDistance != 0 && currentDistance > threshold * previousDistance
         && srcParallelism * 2 / 3 >= mapSize - i + 1) {
         final Integer targetNumberOfSets = mapSize - i;
-        final HashSet<HashSet<String>> setsOfExecutors = getTargetNumberOfExecutorSetsFrom(map, targetNumberOfSets);
+        final Set<Set<String>> setsOfExecutors = getTargetNumberOfExecutorSetsFrom(map, targetNumberOfSets);
 
         final CombineTransform<?, ?, ?> intermediateCombineStreamTransform =
           (CombineTransform) finalCombineStreamTransform.getIntermediateCombine().get();
@@ -144,9 +131,9 @@ public class IntermediateAccumulatorInsertionPass extends ReshapingPass {
     }
   }
 
-  private static HashSet<HashSet<String>> getTargetNumberOfExecutorSetsFrom(final Map<String, ArrayList<String>> map,
+  private static Set<Set<String>> getTargetNumberOfExecutorSetsFrom(final Map<String, List<String>> map,
                                                                             final Integer targetNumber) {
-    final HashSet<HashSet<String>> result = new HashSet<>();
+    final Set<Set<String>> result = new HashSet<>();
     final Integer index = map.size() - targetNumber;
     final List<String> indicesToCheck = IntStream.range(0, index)
       .map(i -> -i).sorted().map(i -> -i)
@@ -163,7 +150,7 @@ public class IntermediateAccumulatorInsertionPass extends ReshapingPass {
     return result;
   }
 
-  private static HashSet<String> recursivelyExtractExecutorsFrom(final Map<String, ArrayList<String>> map,
+  private static HashSet<String> recursivelyExtractExecutorsFrom(final Map<String, List<String>> map,
                                                                  final String key,
                                                                  final List<String> indicesToCheck) {
     indicesToCheck.remove(key);
