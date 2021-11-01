@@ -24,8 +24,7 @@ import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.beam.sdk.values.KV;
-import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.ir.vertex.transform.LatencymarkEmitTransform;
 import org.apache.nemo.common.punctuation.Watermark;
 
 import javax.annotation.Nullable;
@@ -38,11 +37,10 @@ import java.util.*;
  * @param <I> input type
  * @param <O> materialized output type
  */
-public final class CreateViewTransform<I, O> implements Transform<WindowedValue<KV<?, I>>, WindowedValue<O>> {
+public final class CreateViewTransform<I, O>
+  extends LatencymarkEmitTransform<WindowedValue<KV<?, I>>, WindowedValue<O>> {
   private final ViewFn<Materializations.MultimapView<Void, ?>, O> viewFn;
   private final Map<BoundedWindow, List<I>> windowListMap;
-
-  private OutputCollector<WindowedValue<O>> outputCollector;
 
   private long currentOutputWatermark;
 
@@ -55,11 +53,6 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
     this.viewFn = viewFn;
     this.windowListMap = new HashMap<>();
     this.currentOutputWatermark = Long.MIN_VALUE;
-  }
-
-  @Override
-  public void prepare(final Context context, final OutputCollector<WindowedValue<O>> oc) {
-    this.outputCollector = oc;
   }
 
   @Override
@@ -78,7 +71,7 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
     // If no data, just forwards the watermark
     if (windowListMap.size() == 0 && currentOutputWatermark < inputWatermark.getTimestamp()) {
       currentOutputWatermark = inputWatermark.getTimestamp();
-      outputCollector.emitWatermark(inputWatermark);
+      getOutputCollector().emitWatermark(inputWatermark);
       return;
     }
 
@@ -90,7 +83,7 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
       if (entry.getKey().maxTimestamp().getMillis() <= inputWatermark.getTimestamp()) {
         // emit the windowed data if the watermark timestamp > the window max boundary
         final O output = viewFn.apply(new MultiView<>(entry.getValue()));
-        outputCollector.emit(WindowedValue.of(
+        getOutputCollector().emit(WindowedValue.of(
           output, entry.getKey().maxTimestamp(), entry.getKey(), PaneInfo.ON_TIME_AND_ONLY_FIRING));
         iterator.remove();
 
@@ -103,7 +96,7 @@ public final class CreateViewTransform<I, O> implements Transform<WindowedValue<
       && currentOutputWatermark < minOutputTimestampOfEmittedWindows) {
       // update current output watermark and emit to next operators
       currentOutputWatermark = minOutputTimestampOfEmittedWindows;
-      outputCollector.emitWatermark(new Watermark(currentOutputWatermark));
+      getOutputCollector().emitWatermark(new Watermark(currentOutputWatermark));
     }
   }
 
