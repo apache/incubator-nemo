@@ -21,6 +21,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
+import org.apache.nemo.common.punctuation.Latencymark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -128,6 +129,35 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
     for (final List<OutputWriter> externalVertices : externalAdditionalOutputs.values()) {
       for (final OutputWriter externalVertex : externalVertices) {
         externalVertex.writeWatermark(watermark);
+      }
+    }
+  }
+
+  @Override
+  public void emitLatencymark(final Latencymark latencymark) {
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("{} emits latencymark {}", irVertex.getId(), latencymark);
+    }
+
+    // Emit latencymark to internal vertices
+    for (final NextIntraTaskOperatorInfo internalVertex : internalMainOutputs) {
+      internalVertex.getNextOperator().getTransform().onLatencymark(latencymark);
+    }
+
+    for (final List<NextIntraTaskOperatorInfo> internalVertices : internalAdditionalOutputs.values()) {
+      for (final NextIntraTaskOperatorInfo internalVertex : internalVertices) {
+        internalVertex.getNextOperator().getTransform().onLatencymark(latencymark);
+      }
+    }
+
+    // Emit latencymark to output writer
+    for (final OutputWriter outputWriter : externalMainOutputs) {
+      outputWriter.writeLatencymark(latencymark);
+    }
+
+    for (final List<OutputWriter> externalVertices : externalAdditionalOutputs.values()) {
+      for (final OutputWriter externalVertex : externalVertices) {
+        externalVertex.writeLatencymark(latencymark);
       }
     }
   }
