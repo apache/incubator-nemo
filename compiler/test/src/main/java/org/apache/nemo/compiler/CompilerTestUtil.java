@@ -143,4 +143,25 @@ public final class CompilerTestUtil {
       .addUserArgs(input, numFeatures, numClasses, numIteration);
     return compileDAG(mlrArgBuilder.build());
   }
+
+  public static IRDAG compileWindowedWordcountIntermediateAccumulationDAG() throws Exception {
+    final String input = ROOT_DIR + "/examples/resources/inputs/test_input_windowed_wordcount";
+    final String windowType = "fixed";
+    final String inputType = "bounded";
+    final String main = "org.apache.nemo.examples.beam.WindowedWordCount";
+    final String output = ROOT_DIR + "/examples/resources/inputs/test_output";
+    final String scheduler = "org.apache.nemo.runtime.master.scheduler.StreamingScheduler";
+    final String resourceJson = ROOT_DIR + "/examples/resources/executors/beam_test_executor_resources.json";
+    final String jobId = "testIntermediateAccumulatorInsertionPass";
+    final String policy = "org.apache.nemo.compiler.optimizer.policy.StreamingPolicy";
+
+    final ArgBuilder edgarArgBuilder = new ArgBuilder()
+      .addScheduler(scheduler)
+      .addUserMain(main)
+      .addUserArgs(output, windowType, inputType, input)
+      .addResourceJson(resourceJson)
+      .addJobId(jobId)
+      .addOptimizationPolicy(policy);
+    return compileDAG(edgarArgBuilder.build());
+  }
 }

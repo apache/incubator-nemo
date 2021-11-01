@@ -31,6 +31,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
+import org.apache.nemo.common.ir.vertex.utility.IntermediateAccumulatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.TaskSizeSplitterVertex;
 import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageAggregatorVertex;
 import org.apache.nemo.common.ir.vertex.utility.runtimepass.MessageGeneratorVertex;
@@ -324,6 +325,16 @@ public class IRDAGTest {
     mustPass();
 
     irdag.delete(sp);
+    mustPass();
+  }
+
+  @Test
+  public void testAccumulatorVertex() {
+    final IntermediateAccumulatorVertex cv =
+      new IntermediateAccumulatorVertex(new EmptyComponents.EmptyTransform("iav"));
+    cv.setProperty(ShuffleExecutorSetProperty.of(new HashSet<>()));
+    cv.setProperty(ParallelismProperty.of(5));
+    irdag.insert(cv, shuffleEdge);
     mustPass();
   }
 
