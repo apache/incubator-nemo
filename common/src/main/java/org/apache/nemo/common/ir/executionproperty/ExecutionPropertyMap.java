@@ -73,6 +73,7 @@ public final class ExecutionPropertyMap<T extends ExecutionProperty> implements 
     map.put(EncoderProperty.of(EncoderFactory.DUMMY_ENCODER_FACTORY));
     map.put(DecoderProperty.of(DecoderFactory.DUMMY_DECODER_FACTORY));
     switch (commPattern) {
+      case PARTIAL_SHUFFLE:
       case SHUFFLE:
         map.put(DataFlowProperty.of(DataFlowProperty.Value.PULL));
         map.put(PartitionerProperty.of(PartitionerProperty.Type.HASH));

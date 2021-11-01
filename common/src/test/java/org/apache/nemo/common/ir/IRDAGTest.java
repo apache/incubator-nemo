@@ -327,6 +327,15 @@ public class IRDAGTest {
     mustPass();
   }
 
+  @Test
+  public void testAccumulatorVertex() {
+    final OperatorVertex cv = new OperatorVertex(new EmptyComponents.EmptyTransform("iav"));
+    cv.setProperty(ShuffleExecutorSetProperty.of(new HashSet<>()));
+    cv.setProperty(ParallelismProperty.of(5));
+    irdag.insert(cv, shuffleEdge);
+    mustPass();
+  }
+
   private MessageAggregatorVertex insertNewTriggerVertex(final IRDAG dag, final IREdge edgeToGetStatisticsOf) {
     final MessageGeneratorVertex mb = new MessageGeneratorVertex<>((l, r) -> null);
     final MessageAggregatorVertex ma = new MessageAggregatorVertex<>(() -> new Object(), (l, r) -> null);

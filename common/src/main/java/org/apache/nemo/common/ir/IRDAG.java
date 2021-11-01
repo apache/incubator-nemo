@@ -35,6 +35,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.*;
 import org.apache.nemo.common.ir.executionproperty.ResourceSpecification;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.LoopVertex;
+import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.MessageIdVertexProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
@@ -795,6 +796,39 @@ public final class IRDAG implements DAGInterface<IRVertex, IREdge> {
     //connect splitter to outside world
     fromOutsideToSplitter.forEach(builder::connectVertices);
     fromSplitterToOutside.forEach(builder::connectVertices);
+
+    modifiedDAG = builder.build();
+  }
+
+  public void insert(final OperatorVertex accumulatorVertex, final IREdge targetEdge) {
+    // Create a completely new DAG with the vertex inserted.
+    final DAGBuilder<IRVertex, IREdge> builder = new DAGBuilder<>();
+
+    builder.addVertex(accumulatorVertex);
+    modifiedDAG.topologicalDo(v -> {
+      builder.addVertex(v);
+
+      modifiedDAG.getIncomingEdgesOf(v).forEach(e -> {
+        if (e == targetEdge) {
+          // Edge to the accumulatorVertex
+          final IREdge toAV = new IREdge(CommunicationPatternProperty.Value.PARTIAL_SHUFFLE,
+            e.getSrc(), accumulatorVertex);
+          e.copyExecutionPropertiesTo(toAV);
+          toAV.setProperty(CommunicationPatternProperty.of(CommunicationPatternProperty.Value.PARTIAL_SHUFFLE));
+
+          // Edge from the accumulatorVertex
+          final IREdge fromAV = new IREdge(CommunicationPatternProperty.Value.SHUFFLE, accumulatorVertex, e.getDst());
+          e.copyExecutionPropertiesTo(fromAV);
+
+          // Connect the new edges
+          builder.connectVertices(toAV);
+          builder.connectVertices(fromAV);
+        } else {
+          // Simply connect vertices as before
+          builder.connectVertices(e);
+        }
+      });
+    });
 
     modifiedDAG = builder.build();
   }

@@ -34,6 +34,14 @@ public class CombineFnTest extends TestCase {
   public static final class CountFn extends Combine.CombineFn<Integer, CountFn.Accum, Integer> {
     public static final class Accum {
       int sum = 0;
+
+      @Override
+      public boolean equals(Object o) {
+        if (Accum.class != o.getClass()) {
+          return false;
+        }
+        return (sum == ((Accum) o).sum);
+      }
     }
 
     @Override
@@ -115,6 +123,55 @@ public class CombineFnTest extends TestCase {
     // to the one from original combineFn.
     try {
       assertEquals(accumCoder, partialCombineFn.getAccumulatorCoder(CoderRegistry.createDefault(), INTEGER_CODER));
+    } catch (CannotProvideCoderException e) {
+      throw new RuntimeException("Failed to provide an accumulator coder");
+    }
+  }
+
+  @Test
+  public void testIntermediateCombineFn() {
+    // Initialize intermediate combine function.
+    final IntermediateCombineFn<CountFn.Accum> intermediateCombineFn =
+      new IntermediateCombineFn<>(combineFn, accumCoder);
+
+    // Create accumulator.
+    final CountFn.Accum accum1 = intermediateCombineFn.createAccumulator();
+    final CountFn.Accum accum2 = intermediateCombineFn.createAccumulator();
+    final CountFn.Accum accum3 = intermediateCombineFn.createAccumulator();
+
+    final CountFn.Accum expectedMergedAccum = intermediateCombineFn.createAccumulator();
+    expectedMergedAccum.sum = 6;
+
+    // Check whether accumulators are initialized correctly.
+    assertEquals(0, accum1.sum);
+    assertEquals(0, accum2.sum);
+    assertEquals(0, accum3.sum);
+
+    // Change the parameter for the sake of unit testing.
+    accum1.sum = 1;
+    accum2.sum = 2;
+    accum3.sum = 3;
+
+    // Add input. Intermediate combineFn's addInput method takes accumulators as input
+    // and merges them into a single accumulator.
+    final CountFn.Accum addedAccum = intermediateCombineFn.addInput(accum1, accum2);
+
+    // Check whether inputs are added correctly.
+    assertEquals(3, addedAccum.sum);
+
+    // Merge accumulators.
+    CountFn.Accum mergedAccum = intermediateCombineFn.mergeAccumulators(Arrays.asList(accum1, accum2, accum3));
+
+    // Check whether accumulators are merged correctly.
+    assertEquals(expectedMergedAccum, mergedAccum);
+
+    // Extract output.
+    assertEquals(expectedMergedAccum, intermediateCombineFn.extractOutput(mergedAccum));
+
+    // Get accumulator coder. Check if the accumulator coder from intermediate combineFn is equal
+    // to the one from original combineFn.
+    try {
+      assertEquals(accumCoder, intermediateCombineFn.getAccumulatorCoder(CoderRegistry.createDefault(), INTEGER_CODER));
     } catch (CannotProvideCoderException e) {
       throw new RuntimeException("Failed to provide an accumulator coder");
     }

@@ -52,6 +52,7 @@ public final class CommunicationPatternProperty
   public enum Value {
     ONE_TO_ONE,
     BROADCAST,
-    SHUFFLE
+    SHUFFLE,
+    PARTIAL_SHUFFLE
   }
 }
