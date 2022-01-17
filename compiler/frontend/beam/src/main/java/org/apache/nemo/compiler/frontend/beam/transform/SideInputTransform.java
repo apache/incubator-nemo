@@ -19,8 +19,7 @@
 package org.apache.nemo.compiler.frontend.beam.transform;
 
 import org.apache.beam.sdk.util.WindowedValue;
-import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.ir.vertex.transform.LatencymarkEmitTransform;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.compiler.frontend.beam.SideInputElement;
 
@@ -30,8 +29,8 @@ import org.apache.nemo.compiler.frontend.beam.SideInputElement;
  *
  * @param <T> input/output type.
  */
-public final class SideInputTransform<T> implements Transform<WindowedValue<T>, WindowedValue<SideInputElement<T>>> {
-  private OutputCollector<WindowedValue<SideInputElement<T>>> outputCollector;
+public final class SideInputTransform<T>
+  extends LatencymarkEmitTransform<WindowedValue<T>, WindowedValue<SideInputElement<T>>> {
   private final int index;
 
   /**
@@ -44,18 +43,13 @@ public final class SideInputTransform<T> implements Transform<WindowedValue<T>, 
   }
 
   @Override
-  public void prepare(final Context context, final OutputCollector<WindowedValue<SideInputElement<T>>> oc) {
-    this.outputCollector = oc;
-  }
-
-  @Override
   public void onData(final WindowedValue<T> element) {
-    outputCollector.emit(element.withValue(new SideInputElement<>(index, element.getValue())));
+    getOutputCollector().emit(element.withValue(new SideInputElement<>(index, element.getValue())));
   }
 
   @Override
   public void onWatermark(final Watermark watermark) {
-    outputCollector.emitWatermark(watermark);
+    getOutputCollector().emitWatermark(watermark);
   }
 
   @Override

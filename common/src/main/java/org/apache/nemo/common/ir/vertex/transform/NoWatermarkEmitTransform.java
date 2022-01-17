@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.common.ir.vertex.transform;
 
+import org.apache.nemo.common.punctuation.Latencymark;
 import org.apache.nemo.common.punctuation.Watermark;
 
 /**
@@ -37,4 +38,8 @@ public abstract class NoWatermarkEmitTransform<I, O> implements Transform<I, O> 
     // do nothing
   }
 
+  @Override
+  public final void onLatencymark(final Latencymark latencymark) {
+    // do nothing
+  }
 }
