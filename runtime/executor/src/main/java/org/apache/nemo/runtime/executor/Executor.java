@@ -245,7 +245,6 @@ public final class Executor {
           onTaskReceived(task);
           break;
         case RequestMetricFlush:
-          TASK_EXECUTOR_LIST.forEach(TaskExecutor::sendMetrics);
           metricMessageSender.flush();
           break;
         default:
