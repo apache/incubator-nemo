@@ -49,7 +49,7 @@ under the License.
     <maven.javadoc.version>3.3.1</maven.javadoc.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <auto-service.version>1.0.1</auto-service.version>
-    <beam.version>2.35.0</beam.version>
+    <beam.version>2.24.0</beam.version>
     <spark.version>2.4.4</spark.version>
     <scala.version>2.12.10</scala.version>
     <kryo.version>4.0.2</kryo.version>

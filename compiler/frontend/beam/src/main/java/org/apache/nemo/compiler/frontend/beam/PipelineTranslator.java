@@ -185,6 +185,36 @@ final class PipelineTranslator {
    * @param beamNode  the beam node to be translated
    * @param transform transform which can be obtained from {@code beamNode}
    */
+  @PrimitiveTransformTranslator(Read.Unbounded.class)
+  private static void unboundedReadTranslator(final PipelineTranslationContext ctx,
+                                              final TransformHierarchy.Node beamNode,
+                                              final Read.Unbounded<?> transform) {
+    final IRVertex vertex = new BeamUnboundedSourceVertex<>(transform.getSource(), DisplayData.from(transform));
+    ctx.addVertex(vertex);
+    beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
+    beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
+  }
+
+  /**
+   * @param ctx       provides translation context
+   * @param beamNode  the beam node to be translated
+   * @param transform transform which can be obtained from {@code beamNode}
+   */
+  @PrimitiveTransformTranslator(Read.Bounded.class)
+  private static void boundedReadTranslator(final PipelineTranslationContext ctx,
+                                            final TransformHierarchy.Node beamNode,
+                                            final Read.Bounded<?> transform) {
+    final IRVertex vertex = new BeamBoundedSourceVertex<>(transform.getSource(), DisplayData.from(transform));
+    ctx.addVertex(vertex);
+    beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
+    beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
+  }
+
+  /**
+   * @param ctx       provides translation context
+   * @param beamNode  the beam node to be translated
+   * @param transform transform which can be obtained from {@code beamNode}
+   */
   @PrimitiveTransformTranslator(ParDo.SingleOutput.class)
   private static void parDoSingleOutputTranslator(final PipelineTranslationContext ctx,
                                                   final TransformHierarchy.Node beamNode,
@@ -299,37 +329,6 @@ final class PipelineTranslator {
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////// COMPOSITE TRANSFORMS
-
-
-  /**
-   * @param ctx       provides translation context
-   * @param beamNode  the beam node to be translated
-   * @param transform transform which can be obtained from {@code beamNode}
-   */
-  @CompositeTransformTranslator(Read.Unbounded.class)
-  private static void unboundedReadTranslator(final PipelineTranslationContext ctx,
-                                              final TransformHierarchy.Node beamNode,
-                                              final Read.Unbounded<?> transform) {
-    final IRVertex vertex = new BeamUnboundedSourceVertex<>(transform.getSource(), DisplayData.from(transform));
-    ctx.addVertex(vertex);
-    beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
-    beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
-  }
-
-  /**
-   * @param ctx       provides translation context
-   * @param beamNode  the beam node to be translated
-   * @param transform transform which can be obtained from {@code beamNode}
-   */
-  @CompositeTransformTranslator(Read.Bounded.class)
-  private static void boundedReadTranslator(final PipelineTranslationContext ctx,
-                                            final TransformHierarchy.Node beamNode,
-                                            final Read.Bounded<?> transform) {
-    final IRVertex vertex = new BeamBoundedSourceVertex<>(transform.getSource(), DisplayData.from(transform));
-    ctx.addVertex(vertex);
-    beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
-    beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
-  }
 
   /**
    * {@link Combine.PerKey} = {@link GroupByKey} + {@link Combine.GroupedValues}
