@@ -259,8 +259,8 @@ public final class Util {
           final TreeNode resourceNode = jsonRootNode.get(i);
           final int executorNum = resourceNode.path("num").traverse().nextIntValue(1);
           final String type = resourceNode.get("type").traverse().nextTextValue();
-          final int capacity = resourceNode.get("capacity").traverse().getIntValue();
-          final int memory = resourceNode.get("memory_mb").traverse().getIntValue();
+          final int capacity = resourceNode.get("capacity").traverse().nextIntValue(15);
+          final int memory = resourceNode.get("memory_mb").traverse().nextIntValue(512);
           final OptionalDouble maxOffheapRatio;
           final OptionalInt poisonSec;
 
