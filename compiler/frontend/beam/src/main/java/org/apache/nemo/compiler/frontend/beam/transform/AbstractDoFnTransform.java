@@ -281,8 +281,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     final DoFn wrappedDoFn = wrapDoFn(doFn);
 
     // invoker
-    doFnInvoker = DoFnInvokers.invokerFor(wrappedDoFn);
-    doFnInvoker.invokeSetup(null);
+    doFnInvoker = DoFnInvokers.tryInvokeSetupFor(wrappedDoFn, options);
 
     // DoFnRunners.simpleRunner takes care of all the hard stuff of running the DoFn
     // and that this approach is the standard used by most of the Beam runners
