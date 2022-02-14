@@ -44,24 +44,31 @@ public final class Latencymark implements Serializable {
   }
 
   /**
-   * @return the latencymark timestamp
+   * @return the latencymark timestamp.
    */
   public long getCreatedTimestamp() {
     return createdTimestamp;
   }
 
   /**
-   * @return the task id where it is created
+   * @return the task id where it is created.
    */
   public String getCreatedTaskId() {
     return createdTaskId;
   }
 
   /**
-   * @return the task id of previous task
+   * @return the task id of previous task.
    */
   public String getPreviousTaskId() {
     return previousTaskId;
+  }
+
+  /**
+   * @return the previously sent time stamp.
+   */
+  public long getPreviousSentTimestamp() {
+    return previousSentTimestamp;
   }
 
   /**

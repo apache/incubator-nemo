@@ -29,6 +29,7 @@ import java.io.Serializable;
 public final class LatencyMetric implements Serializable {
   private final Latencymark latencymark;
   private final long timestamp;
+  private final long latency;
 
   /**
    * Constructor with the latencymark and timestamp.
@@ -39,6 +40,7 @@ public final class LatencyMetric implements Serializable {
   public LatencyMetric(final Latencymark latencymark, final long timestamp) {
     this.latencymark = latencymark;
     this.timestamp = timestamp;
+    this.latency = timestamp - latencymark.getCreatedTimestamp();
   }
 
   /**
@@ -57,5 +59,12 @@ public final class LatencyMetric implements Serializable {
    */
   public long getTimestamp() {
     return this.timestamp;
+  }
+
+  /**
+   * @return the latency.
+   */
+  public long getLatency() {
+    return latency;
   }
 }
