@@ -492,7 +492,9 @@ public final class TaskExecutor {
 
       // send latencyMetric to RuntimeMaster
       LatencyMetric metric = new LatencyMetric(latencymark, currTimestamp);
-      metricMessageSender.send(TASK_METRIC_ID, taskId, "latencymark", SerializationUtils.serialize(metric));
+      if (metric.getLatency() > 0) {
+        metricMessageSender.send(TASK_METRIC_ID, taskId, "latencymark", SerializationUtils.serialize(metric));
+      }
 
       long latestSentTimestamp = latestSentLatencymarkTimestamp.getOrDefault(latencymark.getCreatedTaskId(), -1L);
       if (latestSentTimestamp < latencymark.getCreatedTimestamp()) {
