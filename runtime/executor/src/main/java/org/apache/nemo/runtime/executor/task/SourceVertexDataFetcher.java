@@ -28,6 +28,7 @@ import org.apache.nemo.common.punctuation.Watermark;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Fetches data from a data source.
@@ -39,8 +40,8 @@ class SourceVertexDataFetcher extends DataFetcher {
   private static final long WATERMARK_PERIOD = 1000; // ms
   private static final long LATENCYMARK_PERIOD = 1000; // ms
   private final ScheduledExecutorService streamMarkTriggerService;
-  private boolean watermarkTriggered = false;
-  private boolean latencyMarkTriggered = false;
+  private final AtomicBoolean watermarkTriggered = new AtomicBoolean(true); // initial watermark to set up data plane
+  private final AtomicBoolean latencyMarkTriggered = new AtomicBoolean(false);
   private final boolean bounded;
 
   SourceVertexDataFetcher(final SourceVertex dataSource,
@@ -57,11 +58,11 @@ class SourceVertexDataFetcher extends DataFetcher {
     if (!bounded) {
       this.streamMarkTriggerService = Executors.newScheduledThreadPool(1);
       this.streamMarkTriggerService.scheduleAtFixedRate(() ->
-        watermarkTriggered = true,
+        watermarkTriggered.set(true),
         WATERMARK_PERIOD, WATERMARK_PERIOD, TimeUnit.MILLISECONDS);
       if (latencyMarkSendPeriod != -1) {
         this.streamMarkTriggerService.scheduleAtFixedRate(() ->
-            latencyMarkTriggered = true,
+            latencyMarkTriggered.set(true),
           latencyMarkSendPeriod, latencyMarkSendPeriod, TimeUnit.MILLISECONDS);
       }
     } else {
@@ -99,21 +100,11 @@ class SourceVertexDataFetcher extends DataFetcher {
   }
 
   private boolean isWatermarkTriggerTime() {
-    if (watermarkTriggered) {
-      watermarkTriggered = false;
-      return true;
-    } else {
-      return false;
-    }
+    return watermarkTriggered.getAndSet(false);
   }
 
   private boolean isLatencyMarkTriggered() {
-    if (latencyMarkTriggered) {
-      latencyMarkTriggered = false;
-      return true;
-    } else {
-      return false;
-    }
+    return latencyMarkTriggered.getAndSet(false);
   }
 
   private Object retrieveElement() {
