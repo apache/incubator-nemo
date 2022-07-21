@@ -31,8 +31,7 @@ env:
   jobs:
     - GOAL="verify -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info"
 before_install:
-  - sudo apt-get -y install gcc g++
-  - nvm install node  # for Web UI build
+  - nvm install --lts # for Web UI build
 install: true
 script:
   # the following command line builds the project, runs the tests with coverage
