@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.punctuation.Latencymark;
+import org.apache.nemo.common.punctuation.LatencyMark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +49,7 @@ public final class OperatorWatermarkCollector implements OutputCollector {
   }
 
   @Override
-  public void emitLatencymark(final Latencymark latencymakr) {
+  public void emitLatencymark(final LatencyMark latencymakr) {
     throw new IllegalStateException("Should not be called");
   }
 

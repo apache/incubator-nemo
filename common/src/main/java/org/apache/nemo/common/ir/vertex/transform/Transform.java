@@ -19,7 +19,7 @@
 package org.apache.nemo.common.ir.vertex.transform;
 
 import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.punctuation.Latencymark;
+import org.apache.nemo.common.punctuation.LatencyMark;
 import org.apache.nemo.common.punctuation.Watermark;
 
 import java.io.Serializable;
@@ -63,7 +63,7 @@ public interface Transform<I, O> extends Serializable {
    *
    * @param latencymark latencymark.
    */
-  void onLatencymark(Latencymark latencymark);
+  void onLatencymark(LatencyMark latencymark);
 
   /**
    * Close the transform.

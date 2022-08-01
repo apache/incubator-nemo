@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.nemo.common.coder.DecoderFactory;
-import org.apache.nemo.common.punctuation.Latencymark;
+import org.apache.nemo.common.punctuation.LatencyMark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,7 +86,7 @@ public final class NemoEventDecoderFactory implements DecoderFactory {
           (WatermarkWithIndex) SerializationUtils.deserialize(inputStream);
         return watermarkWithIndex;
       } else if (dataType == 0x02) {
-        final Latencymark latencymark = (Latencymark) SerializationUtils.deserialize(inputStream);
+        final LatencyMark latencymark = (LatencyMark) SerializationUtils.deserialize(inputStream);
         return latencymark;
       } else {
         throw new RuntimeException("Element decoding failure: " + dataType);

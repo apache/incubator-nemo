@@ -22,10 +22,13 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Latency mark is conveyor that has data for debugging.
- * It is created only from source vertex and record the timestamp when it is created and taskId where it is created.
+ * Latency mark is a watermark with the data related to stream data latencies.
+ * It is created only from source vertex, with the data of when (timestamp) and where (taskId) it was created.
+ * Later tasks can infer the latency according to the time that the latencyMark arrives to the task.
+ * When the latencyMark arrives in a task, it leaves its record with its task id and timestamp, and
+ * later tasks can track the itinerary by looking at the recorded previous task id and timestamp.
  */
-public final class Latencymark implements Serializable {
+public final class LatencyMark implements Serializable {
   private final String createdTaskId;
   private final long createdTimestamp;
   private String previousTaskId;
@@ -33,10 +36,10 @@ public final class Latencymark implements Serializable {
 
 
   /**
-   * @param taskId task id where it is created
-   * @param timestamp timestamp when it is created
+   * @param taskId task id of where it was created
+   * @param timestamp timestamp of when it was created
    */
-  public Latencymark(final String taskId, final long timestamp) {
+  public LatencyMark(final String taskId, final long timestamp) {
     this.createdTaskId = taskId;
     this.createdTimestamp = timestamp;
     this.previousTaskId = "";
@@ -44,30 +47,37 @@ public final class Latencymark implements Serializable {
   }
 
   /**
-   * @return the latencymark timestamp
+   * @return the timestamp of when this latencyMark was first created.
    */
   public long getCreatedTimestamp() {
     return createdTimestamp;
   }
 
   /**
-   * @return the task id where it is created
+   * @return the task id of where it was created.
    */
   public String getCreatedTaskId() {
     return createdTaskId;
   }
 
   /**
-   * @return the task id of previous task
+   * @return the task id of task that this latency mark was previously passed on by.
    */
   public String getPreviousTaskId() {
     return previousTaskId;
   }
 
   /**
+   * @return the time stamp when this latency mark was previously passed on by a task.
+   */
+  public long getPreviousSentTimestamp() {
+    return previousSentTimestamp;
+  }
+
+  /**
    * Set the previousTaskId.
    *
-   * @param taskId the task id.
+   * @param taskId the task id of where this latencyMark has gone through previously.
    */
   public void setPreviousTaskId(final String taskId) {
     previousTaskId = taskId;
@@ -76,7 +86,7 @@ public final class Latencymark implements Serializable {
   /**
    * Set the previousSentTimestamp.
    *
-   * @param timestamp the timestamp.
+   * @param timestamp the timestamp of when this latencyMark was sent from a previous task.
    */
   public void setPreviousSentTimestamp(final long timestamp) {
     previousSentTimestamp = timestamp;
@@ -90,7 +100,7 @@ public final class Latencymark implements Serializable {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    final Latencymark latencymark = (Latencymark) o;
+    final LatencyMark latencymark = (LatencyMark) o;
     return (createdTimestamp == latencymark.createdTimestamp)
       && (createdTaskId.equals(latencymark.createdTaskId)
       && (previousTaskId.equals(latencymark.previousTaskId)));
