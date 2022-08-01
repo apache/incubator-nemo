@@ -21,7 +21,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
-import org.apache.nemo.common.punctuation.Latencymark;
+import org.apache.nemo.common.punctuation.LatencyMark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -134,7 +134,7 @@ public final class OperatorVertexOutputCollector<O> implements OutputCollector<O
   }
 
   @Override
-  public void emitLatencymark(final Latencymark latencymark) {
+  public void emitLatencymark(final LatencyMark latencymark) {
     if (LOG.isDebugEnabled()) {
       LOG.debug("{} emits latencymark {}", irVertex.getId(), latencymark);
     }

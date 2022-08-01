@@ -133,7 +133,11 @@ public class TaskMetric implements StateMetric<TaskState.State> {
     }
   }
 
-  private void addLatencymark(final LatencyMetric latencyMetric) {
+  public final Map<String, List<LatencyMetric>> getLatencyMetric() {
+    return latencymarks;
+  }
+
+  private void setLatencyMetric(final LatencyMetric latencyMetric) {
     latencymarks.putIfAbsent(latencyMetric.getLatencymark().getPreviousTaskId(), new LinkedList<>());
     latencymarks.get(latencyMetric.getLatencymark().getPreviousTaskId()).add(latencyMetric);
   }
@@ -297,7 +301,7 @@ public class TaskMetric implements StateMetric<TaskState.State> {
         setStreamMetric(SerializationUtils.deserialize(metricValue));
         break;
       case "latencymark":
-        addLatencymark(SerializationUtils.deserialize(metricValue));
+        setLatencyMetric(SerializationUtils.deserialize(metricValue));
         break;
       case "taskDuration":
         setTaskDuration(SerializationUtils.deserialize(metricValue));

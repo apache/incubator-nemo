@@ -22,7 +22,7 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
-import org.apache.nemo.common.punctuation.Latencymark;
+import org.apache.nemo.common.punctuation.LatencyMark;
 import org.apache.nemo.common.punctuation.Watermark;
 
 import java.util.concurrent.Executors;
@@ -113,7 +113,7 @@ class SourceVertexDataFetcher extends DataFetcher {
       if (isWatermarkTriggerTime()) {
         return new Watermark(readable.readWatermark());
       } else if (isLatencyMarkTriggered()) {
-        return new Latencymark(taskId, System.currentTimeMillis());
+        return new LatencyMark(taskId, System.currentTimeMillis());
       }
     }
 

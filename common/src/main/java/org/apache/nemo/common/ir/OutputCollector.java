@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.common.ir;
 
-import org.apache.nemo.common.punctuation.Latencymark;
+import org.apache.nemo.common.punctuation.LatencyMark;
 import org.apache.nemo.common.punctuation.Watermark;
 
 import java.io.Serializable;
@@ -50,7 +50,7 @@ public interface OutputCollector<O> extends Serializable {
    *
    * @param latencymark latencymark
    */
-  void emitLatencymark(Latencymark latencymark);
+  void emitLatencymark(LatencyMark latencymark);
 
   /**
    * Multi-destination emit.
