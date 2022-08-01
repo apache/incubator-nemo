@@ -30,6 +30,8 @@ import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 
+import java.util.Random;
+
 /**
  * A Windowed WordCount application.
  */
@@ -43,27 +45,33 @@ public final class WindowedWordCount {
   public static final String INPUT_TYPE_BOUNDED = "bounded";
   public static final String INPUT_TYPE_UNBOUNDED = "unbounded";
   private static final String SPLITTER = "!";
-
+  public static final Random RAND = new Random();
 
   /**
    * @param p    pipeline.
-   * @param args arguments.
+   * @param inputType input type arg.
+   * @param inputFilePath input file path arg.
    * @return source.
    */
   private static PCollection<KV<String, Long>> getSource(
     final Pipeline p,
-    final String[] args) {
+    final String inputType,
+    final String inputFilePath) {
 
-    final String inputType = args[2];
     if (inputType.compareTo(INPUT_TYPE_BOUNDED) == 0) {
-      final String inputFilePath = args[3];
       return GenericSourceSink.read(p, inputFilePath)
         .apply(ParDo.of(new DoFn<String, String>() {
           @ProcessElement
           public void processElement(@Element final String elem,
                                      final OutputReceiver<String> out) {
             final String[] splitt = elem.split(SPLITTER);
-            out.outputWithTimestamp(splitt[0], new Instant(Long.valueOf(splitt[1])));
+            if (splitt.length > 1 && splitt[1].matches("[0-9]+")) {
+              out.outputWithTimestamp(splitt[0], new Instant(Long.valueOf(splitt[1])));
+            } else {
+              // random time within 1000s range of the past to demonstrate out-of-order data, etc.
+              final long timestamp = System.currentTimeMillis() - RAND.nextInt(1000000);
+              out.outputWithTimestamp(elem, new Instant(timestamp));
+            }
           }
         }))
         .apply(MapElements.<String, KV<String, Long>>via(new SimpleFunction<String, KV<String, Long>>() {
@@ -71,8 +79,12 @@ public final class WindowedWordCount {
           public KV<String, Long> apply(final String line) {
             final String[] words = line.split(" +");
             final String documentId = words[0] + "#" + words[1];
-            final Long count = Long.parseLong(words[2]);
-            return KV.of(documentId, count);
+            if (words.length > 2) {
+              final Long count = Long.parseLong(words[2]);
+              return KV.of(documentId, count);
+            } else {
+              return KV.of(documentId, 1L);
+            }
           }
         }));
     } else if (inputType.compareTo(INPUT_TYPE_UNBOUNDED) == 0) {
@@ -100,6 +112,8 @@ public final class WindowedWordCount {
   public static void main(final String[] args) {
     final String outputFilePath = args[0];
     final String windowType = args[1];
+    final String inputType = args[2];
+    final String inputFilePath = args[3];
 
     final Window<KV<String, Long>> windowFn;
     if (windowType.equals("fixed")) {
@@ -114,7 +128,7 @@ public final class WindowedWordCount {
 
     final Pipeline p = Pipeline.create(options);
 
-    getSource(p, args)
+    getSource(p, inputType, inputFilePath)
       .apply(windowFn)
       .apply(Sum.longsPerKey())
       .apply(MapElements.<KV<String, Long>, String>via(new SimpleFunction<KV<String, Long>, String>() {
