@@ -174,6 +174,7 @@ final class FrameDecoder extends ByteToMessageDecoder {
   private boolean onControlBodyAdded(final ByteBuf in, final List out)
     throws InvalidProtocolBufferException {
     ContextManager.getEncoderDecoderLock().lock();
+    in.markReaderIndex();
     try {
       assert (controlBodyBytesToRead > 0);
       assert (dataBodyBytesToRead == 0);
@@ -181,9 +182,18 @@ final class FrameDecoder extends ByteToMessageDecoder {
 
       assert (controlBodyBytesToRead <= Integer.MAX_VALUE);
 
-      if (in.readableBytes() < controlBodyBytesToRead) {
+      int i = 0;
+      while (in.readableBytes() < controlBodyBytesToRead) {
         // cannot read body now
-        return false;
+        LOG.warn("ControlMessage cannot be read ({})", i);
+        ContextManager.getEncoderDecoderLock().unlock();
+        Thread.sleep(1000);
+        ContextManager.getEncoderDecoderLock().lock();
+        i++;
+        if (i > 20) {
+          in.resetReaderIndex();
+          return false;
+        }
       }
 
       final byte[] bytes;
@@ -204,6 +214,9 @@ final class FrameDecoder extends ByteToMessageDecoder {
       in.skipBytes((int) controlBodyBytesToRead);
       controlBodyBytesToRead = 0;
       return true;
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+      return false;
     } finally {
       ContextManager.getEncoderDecoderLock().unlock();
     }

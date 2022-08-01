@@ -73,8 +73,8 @@ public final class PipeContainer {
     public List<T> getValuesBlocking() {
       lock.lock();
       try {
-        if (!isCountSatistified()) {
-          if (condition.await(100, TimeUnit.SECONDS)) {
+        while (!isCountSatistified()) {
+          if (condition.await(5, TimeUnit.SECONDS)) {
             LOG.info("Await is done!");
           } else {
             LOG.info("Awaiting timeout.. while ({}/{}) {}", indexToValue.size(), expected, indexToValue.values());
