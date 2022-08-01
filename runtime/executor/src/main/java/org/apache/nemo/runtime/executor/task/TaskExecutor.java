@@ -34,7 +34,7 @@ import org.apache.nemo.common.ir.vertex.transform.MessageAggregatorTransform;
 import org.apache.nemo.common.ir.vertex.transform.SignalTransform;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
 import org.apache.nemo.common.punctuation.Finishmark;
-import org.apache.nemo.common.punctuation.Latencymark;
+import org.apache.nemo.common.punctuation.LatencyMark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.comm.ControlMessage;
@@ -386,7 +386,7 @@ public final class TaskExecutor {
   }
 
   private void processLatencymark(final OutputCollector outputCollector,
-                                final Latencymark latencymark) {
+                                final LatencyMark latencymark) {
     outputCollector.emitLatencymark(latencymark);
   }
 
@@ -486,8 +486,8 @@ public final class TaskExecutor {
         serializedReadBytes += ((MultiThreadParentTaskDataFetcher) dataFetcher).getSerializedBytes();
         encodedReadBytes += ((MultiThreadParentTaskDataFetcher) dataFetcher).getEncodedBytes();
       }
-    } else if (event instanceof Latencymark) {
-      Latencymark latencymark = (Latencymark) event;
+    } else if (event instanceof LatencyMark) {
+      LatencyMark latencymark = (LatencyMark) event;
       long currTimestamp = System.currentTimeMillis();
 
       // send latencyMetric to RuntimeMaster

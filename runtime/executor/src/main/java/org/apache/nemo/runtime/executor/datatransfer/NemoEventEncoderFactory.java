@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.nemo.common.coder.EncoderFactory;
-import org.apache.nemo.common.punctuation.Latencymark;
+import org.apache.nemo.common.punctuation.LatencyMark;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,7 +72,7 @@ public final class NemoEventEncoderFactory implements EncoderFactory {
       if (element instanceof WatermarkWithIndex) {
         outputStream.write(0x01); // this is watermark
         outputStream.write(SerializationUtils.serialize((Serializable) element));
-      } else if (element instanceof Latencymark) {
+      } else if (element instanceof LatencyMark) {
         outputStream.write(0x02);
         outputStream.write(SerializationUtils.serialize((Serializable) element));
       } else {

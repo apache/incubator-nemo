@@ -23,7 +23,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.partitioner.DedicatedKeyPerElement;
 import org.apache.nemo.common.partitioner.Partitioner;
-import org.apache.nemo.common.punctuation.Latencymark;
+import org.apache.nemo.common.punctuation.LatencyMark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
@@ -101,7 +101,7 @@ public final class BlockOutputWriter implements OutputWriter {
   }
 
   @Override
-  public void writeLatencymark(final Latencymark latencymark) {
+  public void writeLatencymark(final LatencyMark latencymark) {
     // do nothing
   }
 

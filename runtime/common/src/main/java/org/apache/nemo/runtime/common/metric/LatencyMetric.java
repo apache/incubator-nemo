@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.runtime.common.metric;
 
-import org.apache.nemo.common.punctuation.Latencymark;
+import org.apache.nemo.common.punctuation.LatencyMark;
 
 import java.io.Serializable;
 
@@ -27,7 +27,7 @@ import java.io.Serializable;
  * The traversal time can be calculated by comparing the time when the latencymark was created with the time recorded.
  */
 public final class LatencyMetric implements Serializable {
-  private final Latencymark latencymark;
+  private final LatencyMark latencymark;
   private final long timestamp;
   private final long latency;
 
@@ -37,7 +37,7 @@ public final class LatencyMetric implements Serializable {
    * @param latencymark the latencymark to record.
    * @param timestamp When the latencymark was received.
    */
-  public LatencyMetric(final Latencymark latencymark, final long timestamp) {
+  public LatencyMetric(final LatencyMark latencymark, final long timestamp) {
     this.latencymark = latencymark;
     this.timestamp = timestamp;
     this.latency = timestamp - latencymark.getCreatedTimestamp();
@@ -48,7 +48,7 @@ public final class LatencyMetric implements Serializable {
    *
    * @return latency mark.
    */
-  public Latencymark getLatencymark() {
+  public LatencyMark getLatencymark() {
     return latencymark;
   }
 

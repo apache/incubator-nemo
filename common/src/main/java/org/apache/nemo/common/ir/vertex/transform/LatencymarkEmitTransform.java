@@ -19,10 +19,10 @@
 package org.apache.nemo.common.ir.vertex.transform;
 
 import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.punctuation.Latencymark;
+import org.apache.nemo.common.punctuation.LatencyMark;
 
 /**
- * This transform emits {@link Latencymark}.
+ * This transform emits {@link LatencyMark}.
  *
  * @param <I> input type
  * @param <O> output type
@@ -50,7 +50,7 @@ public abstract class LatencymarkEmitTransform<I, O> implements Transform<I, O> 
    * @param latencymark latencymark
    */
   @Override
-  public final void onLatencymark(final Latencymark latencymark) {
+  public final void onLatencymark(final LatencyMark latencymark) {
     outputCollector.emitLatencymark(latencymark);
   }
 }

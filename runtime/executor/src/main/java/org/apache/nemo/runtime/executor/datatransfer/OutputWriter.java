@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
-import org.apache.nemo.common.punctuation.Latencymark;
+import org.apache.nemo.common.punctuation.LatencyMark;
 import org.apache.nemo.common.punctuation.Watermark;
 
 import java.util.Optional;
@@ -48,7 +48,7 @@ public interface OutputWriter {
    *
    * @param latencymark latencymark
    */
-  void writeLatencymark(Latencymark latencymark);
+  void writeLatencymark(LatencyMark latencymark);
 
   /**
    * @return the total written bytes.
