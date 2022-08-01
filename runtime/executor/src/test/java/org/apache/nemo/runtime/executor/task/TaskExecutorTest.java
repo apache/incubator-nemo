@@ -37,7 +37,7 @@ import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.punctuation.Latencymark;
+import org.apache.nemo.common.punctuation.LatencyMark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
@@ -226,9 +226,9 @@ public final class TaskExecutorTest {
     final Map<String, Readable> vertexIdToReadable = new HashMap<>();
     vertexIdToReadable.put(sourceIRVertex.getId(), readable);
     final List<Watermark> emittedWatermarks = new LinkedList<>();
-    final List<Latencymark> emittedLatencymarks = new LinkedList<>();
+    final List<LatencyMark> emittedLatencyMarks = new LinkedList<>();
 
-    final Transform transform = new StreamTransformNoWatermarkEmit(emittedWatermarks, emittedLatencymarks);
+    final Transform transform = new StreamTransformNoWatermarkEmit(emittedWatermarks, emittedLatencyMarks);
     final OperatorVertex operatorVertex = new OperatorVertex(transform);
 
     final DAG<IRVertex, RuntimeEdge<IRVertex>> taskDag =
@@ -319,9 +319,9 @@ public final class TaskExecutorTest {
   @Test()
   public void testMultipleIncomingEdges() throws Exception {
     final List<Watermark> emittedWatermarks = new ArrayList<>();
-    final List<Latencymark> emittedLatencymarks = new ArrayList<>();
+    final List<LatencyMark> emittedLatencyMarks = new ArrayList<>();
     final IRVertex operatorIRVertex1 = new OperatorVertex(new StreamTransform());
-    final IRVertex operatorIRVertex2 = new OperatorVertex(new StreamTransformNoWatermarkEmit(emittedWatermarks, emittedLatencymarks));
+    final IRVertex operatorIRVertex2 = new OperatorVertex(new StreamTransformNoWatermarkEmit(emittedWatermarks, emittedLatencyMarks));
     final IRVertex operatorIRVertex3 = new OperatorVertex(new StreamTransform());
 
     final IRVertex sourceIRVertex1 = new TestUnboundedSourceVertex();
@@ -630,11 +630,11 @@ public final class TaskExecutorTest {
   private class StreamTransformNoWatermarkEmit<T> implements Transform<T, T> {
     private OutputCollector<T> outputCollector;
     private final List<Watermark> emittedWatermarks;
-    private final List<Latencymark> emittedLatencymarks;
+    private final List<LatencyMark> emittedLatencyMarks;
 
-    StreamTransformNoWatermarkEmit(final List<Watermark> emittedWatermarks, final List<Latencymark> emittedLatencymarks) {
+    StreamTransformNoWatermarkEmit(final List<Watermark> emittedWatermarks, final List<LatencyMark> emittedLatencyMarks) {
       this.emittedWatermarks = emittedWatermarks;
-      this.emittedLatencymarks = emittedLatencymarks;
+      this.emittedLatencyMarks = emittedLatencyMarks;
     }
 
     @Override
@@ -648,8 +648,8 @@ public final class TaskExecutorTest {
     }
 
     @Override
-    public void onLatencymark(Latencymark latencymark) {
-      emittedLatencymarks.add(latencymark);
+    public void onLatencymark(LatencyMark latencymark) {
+      emittedLatencyMarks.add(latencymark);
     }
 
     @Override
@@ -775,7 +775,7 @@ public final class TaskExecutorTest {
     }
 
     @Override
-    public void onLatencymark(Latencymark latencymark) {
+    public void onLatencymark(LatencyMark latencymark) {
       outputCollector.emitLatencymark(latencymark);
     }
 
@@ -811,7 +811,7 @@ public final class TaskExecutorTest {
     }
 
     @Override
-    public void onLatencymark(Latencymark latencymark) {
+    public void onLatencymark(LatencyMark latencymark) {
       // do nothing
     }
 
@@ -852,7 +852,7 @@ public final class TaskExecutorTest {
     }
 
     @Override
-    public void onLatencymark(Latencymark latencymark) {
+    public void onLatencymark(LatencyMark latencymark) {
       outputCollector.emitLatencymark(latencymark);
     }
 
@@ -902,7 +902,7 @@ public final class TaskExecutorTest {
     }
 
     @Override
-    public void onLatencymark(Latencymark latencymark) {
+    public void onLatencymark(LatencyMark latencymark) {
       outputCollector.emitLatencymark(latencymark);
     }
 

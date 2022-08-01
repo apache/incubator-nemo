@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.executor.datatransfer;
 
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.partitioner.Partitioner;
-import org.apache.nemo.common.punctuation.Latencymark;
+import org.apache.nemo.common.punctuation.LatencyMark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
@@ -110,7 +110,7 @@ public final class PipeOutputWriter implements OutputWriter {
   }
 
   @Override
-  public void writeLatencymark(final Latencymark latencymark) {
+  public void writeLatencymark(final LatencyMark latencymark) {
     if (!initialized) {
       doInitialize();
     }

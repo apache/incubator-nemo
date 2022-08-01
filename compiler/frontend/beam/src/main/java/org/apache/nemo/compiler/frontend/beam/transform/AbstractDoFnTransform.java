@@ -33,7 +33,7 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
-import org.apache.nemo.common.punctuation.Latencymark;
+import org.apache.nemo.common.punctuation.LatencyMark;
 import org.apache.nemo.compiler.frontend.beam.InMemorySideInputReader;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
 import org.slf4j.Logger;
@@ -319,7 +319,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
    * @param latencymark latencymark.
    */
   @Override
-  public void onLatencymark(final Latencymark latencymark) {
+  public void onLatencymark(final LatencyMark latencymark) {
     getOutputCollector().emitLatencymark(latencymark);
   }
 
