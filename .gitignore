@@ -57,6 +57,7 @@ tmp
 MetricsData
 .temp*
 tools/*.json
+**/dependency-reduced-pom.xml
 #
 # ----------------------------------------------------------------------
 # ML Files
