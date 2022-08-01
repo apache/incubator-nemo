@@ -194,7 +194,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
    *
    * @return DoFn.
    */
-  public final DoFn getDoFn() {
+  public final DoFn<InterT, OutputT> getDoFn() {
     return doFn;
   }
 
