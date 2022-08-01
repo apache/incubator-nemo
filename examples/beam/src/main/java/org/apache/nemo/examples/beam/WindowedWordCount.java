@@ -68,6 +68,7 @@ public final class WindowedWordCount {
             if (splitt.length > 1 && splitt[1].matches("[0-9]+")) {
               out.outputWithTimestamp(splitt[0], new Instant(Long.valueOf(splitt[1])));
             } else {
+              // random time within 1000s range of the past to demonstrate out-of-order data, etc.
               final long timestamp = System.currentTimeMillis() - RAND.nextInt(1000000);
               out.outputWithTimestamp(elem, new Instant(timestamp));
             }

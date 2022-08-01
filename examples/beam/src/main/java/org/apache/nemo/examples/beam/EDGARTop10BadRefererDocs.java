@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 /**
  * Application for EDGAR dataset.
  * Format: ip, date, time, zone, doc_cik, access number, doc_name, code, size, idx, norefer, noagent, find, crawler.
- * Top 10 documents tha produce the most bad referer errors.
+ * Top 10 documents that produce the worst failure rate of referer errors.
  */
 public final class EDGARTop10BadRefererDocs {
   private static final Logger LOG = LoggerFactory.getLogger(EDGARTop10BadRefererDocs.class.getName());
@@ -82,7 +82,7 @@ public final class EDGARTop10BadRefererDocs {
         public void processElement(@DoFn.Element final String elem,
                                    final OutputReceiver<KV<Object, Integer>> out) {
           final String[] splitt = elem.split(",");
-          final Integer failure = splitt[7].startsWith("2") ? 0 : 1;
+          final Integer failure = splitt[7].startsWith("2") ? 0 : 1;  // HTTP return code 2xx means success.
           try {
             out.outputWithTimestamp(KV.of(splitt[6], failure), Instant.parse(splitt[1] + "T" + splitt[2] + "Z"));
           } catch (Exception e) {
@@ -92,7 +92,7 @@ public final class EDGARTop10BadRefererDocs {
       }));
     source.setCoder(KvCoder.of(ObjectCoderForString.of(), VarIntCoder.of()));
     source.apply(windowFn)
-      .apply(Mean.perKey())
+      .apply(Mean.perKey())  // The mean of 0s and 1s produce the rate of failure.
       .apply(Top.of(10, new ValueComparator<>()).withoutDefaults())
       .apply(MapElements.via(new SimpleFunction<List<KV<Object, Double>>, String>() {
         @Override

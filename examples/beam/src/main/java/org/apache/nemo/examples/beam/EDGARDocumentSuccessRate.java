@@ -75,7 +75,7 @@ public final class EDGARDocumentSuccessRate {
         public void processElement(@DoFn.Element final String elem,
                                    final OutputReceiver<KV<String, Integer>> out) {
           final String[] splitt = elem.split(",");
-          final Integer success = splitt[7].startsWith("2") ? 1 : 0;
+          final Integer success = splitt[7].startsWith("2") ? 1 : 0;  // HTTP return code 2xx means success.
           try {
             out.outputWithTimestamp(KV.of(splitt[6], success), Instant.parse(splitt[1] + "T" + splitt[2] + "Z"));
           } catch (Exception e) {
@@ -84,7 +84,7 @@ public final class EDGARDocumentSuccessRate {
         }
       }));
     source.apply(windowFn)
-      .apply(Mean.perKey())
+      .apply(Mean.perKey())  // Calculating the mean of the retrieved 1s and 0s produces the success rate.
       .apply(MapElements.via(new SimpleFunction<KV<String, Double>, String>() {
         @Override
         public String apply(final KV<String, Double> kv) {
