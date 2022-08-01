@@ -91,6 +91,12 @@ public final class MetricManagerWorker implements MetricMessageSender {
   @Override
   public void send(final String metricType, final String metricId,
                    final String metricField, final byte[] metricValue) {
+    // Clean up duplicates.
+    metricMessageQueue.removeIf(m ->
+      m.getMetricType().equals(metricType)
+        && m.getMetricId().equals(metricId)
+        && m.getMetricField().equals(metricField));
+    // Add updated/new value
     metricMessageQueue.add(
       ControlMessage.Metric.newBuilder()
         .setMetricType(metricType)

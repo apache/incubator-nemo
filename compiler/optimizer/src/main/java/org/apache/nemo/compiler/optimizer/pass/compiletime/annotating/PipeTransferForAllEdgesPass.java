@@ -19,6 +19,8 @@
 package org.apache.nemo.compiler.optimizer.pass.compiletime.annotating;
 
 import org.apache.nemo.common.ir.IRDAG;
+import org.apache.nemo.common.ir.edge.executionproperty.DataFlowProperty;
+import org.apache.nemo.common.ir.edge.executionproperty.DataPersistenceProperty;
 import org.apache.nemo.common.ir.edge.executionproperty.DataStoreProperty;
 
 /**
@@ -36,10 +38,11 @@ public final class PipeTransferForAllEdgesPass extends AnnotatingPass {
   @Override
   public IRDAG apply(final IRDAG dag) {
     dag.getVertices().forEach(vertex ->
-      dag.getIncomingEdgesOf(vertex).stream()
-        .forEach(edge -> edge.setPropertyPermanently(
-          DataStoreProperty.of(DataStoreProperty.Value.PIPE)))
-    );
+      dag.getIncomingEdgesOf(vertex).forEach(edge -> {
+        edge.setPropertyPermanently(DataStoreProperty.of(DataStoreProperty.Value.PIPE));
+        edge.setPropertyPermanently(DataFlowProperty.of(DataFlowProperty.Value.PUSH));
+        edge.setPropertyPermanently(DataPersistenceProperty.of(DataPersistenceProperty.Value.DISCARD));
+      }));
     return dag;
   }
 }

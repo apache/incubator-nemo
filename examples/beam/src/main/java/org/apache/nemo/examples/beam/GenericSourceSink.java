@@ -115,7 +115,7 @@ final class GenericSourceSink {
    * @param path path to check
    * @return boolean value indicating whether the path is HDFS path or not
    */
-  private static boolean isHDFSPath(final String path) {
+  public static boolean isHDFSPath(final String path) {
     return path.startsWith("hdfs://") || path.startsWith("s3a://") || path.startsWith("file://");
   }
 }
