@@ -24,13 +24,15 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.group.ChannelGroup;
 import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferContextSetupMessage;
 import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferDataDirection;
-import org.apache.nemo.runtime.executor.transfer.ByteTransferContext.ContextId;
 import org.apache.nemo.runtime.executor.data.BlockManagerWorker;
 import org.apache.nemo.runtime.executor.data.PipeManagerWorker;
+import org.apache.nemo.runtime.executor.transfer.ByteTransferContext.ContextId;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
 /**
@@ -52,6 +54,7 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
   private final ConcurrentMap<Integer, ByteOutputContext> outputContextsInitiatedByRemote = new ConcurrentHashMap<>();
   private final AtomicInteger nextInputTransferIndex = new AtomicInteger(0);
   private final AtomicInteger nextOutputTransferIndex = new AtomicInteger(0);
+  private static final Lock ENCODER_DECODER_LOCK = new ReentrantLock();
 
   /**
    * Creates context manager for this channel.
@@ -83,6 +86,15 @@ final class ContextManager extends SimpleChannelInboundHandler<ByteTransferConte
   Channel getChannel() {
     return channel;
   }
+
+  /**
+   * Get the lock for encoder and decoder.
+   * @return the lock.
+   */
+  static Lock getEncoderDecoderLock() {
+    return ENCODER_DECODER_LOCK;
+  }
+
 
   /**
    * Returns {@link ByteInputContext} to provide {@link io.netty.buffer.ByteBuf}s on.

@@ -27,6 +27,8 @@ import io.netty.handler.codec.MessageToMessageEncoder;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferContextSetupMessage;
 import org.apache.reef.tang.annotations.Parameter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -38,6 +40,7 @@ import java.util.List;
  */
 @ChannelHandler.Sharable
 final class ControlFrameEncoder extends MessageToMessageEncoder<ByteTransferContext> {
+  private static final Logger LOG = LoggerFactory.getLogger(ControlFrameEncoder.class.getName());
 
   private static final int ZEROS_LENGTH = 5;
   private static final int BODY_LENGTH_LENGTH = Integer.BYTES;
@@ -57,16 +60,22 @@ final class ControlFrameEncoder extends MessageToMessageEncoder<ByteTransferCont
   protected void encode(final ChannelHandlerContext ctx,
                         final ByteTransferContext in,
                         final List out) {
-    final ByteTransferContextSetupMessage message = ByteTransferContextSetupMessage.newBuilder()
-      .setInitiatorExecutorId(localExecutorId)
-      .setTransferIndex(in.getContextId().getTransferIndex())
-      .setDataDirection(in.getContextId().getDataDirection())
-      .setContextDescriptor(ByteString.copyFrom(in.getContextDescriptor()))
-      .setIsPipe(in.getContextId().isPipe())
-      .build();
-    final byte[] frameBody = message.toByteArray();
-    out.add(ZEROS.retain());
-    out.add(ctx.alloc().ioBuffer(BODY_LENGTH_LENGTH, BODY_LENGTH_LENGTH).writeInt(frameBody.length));
-    out.add(Unpooled.wrappedBuffer(frameBody));
+    ContextManager.getEncoderDecoderLock().lock();
+    try {
+      final ByteTransferContextSetupMessage message = ByteTransferContextSetupMessage.newBuilder()
+        .setInitiatorExecutorId(localExecutorId)
+        .setTransferIndex(in.getContextId().getTransferIndex())
+        .setDataDirection(in.getContextId().getDataDirection())
+        .setContextDescriptor(ByteString.copyFrom(in.getContextDescriptor()))
+        .setIsPipe(in.getContextId().isPipe())
+        .build();
+      LOG.debug("ControlMessage encoded: {}", message);
+      final byte[] frameBody = message.toByteArray();
+      out.add(ZEROS.retain());
+      out.add(ctx.alloc().ioBuffer(BODY_LENGTH_LENGTH, BODY_LENGTH_LENGTH).writeInt(frameBody.length));
+      out.add(Unpooled.wrappedBuffer(frameBody));
+    } finally {
+      ContextManager.getEncoderDecoderLock().unlock();
+    }
   }
 }

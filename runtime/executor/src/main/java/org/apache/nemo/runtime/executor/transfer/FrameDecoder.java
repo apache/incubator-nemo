@@ -24,6 +24,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferContextSetupMessage;
 import org.apache.nemo.runtime.common.comm.ControlMessage.ByteTransferDataDirection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -64,6 +66,7 @@ import java.util.List;
  * @see ByteTransportChannelInitializer
  */
 final class FrameDecoder extends ByteToMessageDecoder {
+  private static final Logger LOG = LoggerFactory.getLogger(FrameDecoder.class.getName());
 
   private static final int HEADER_LENGTH = 9;
 
@@ -170,34 +173,53 @@ final class FrameDecoder extends ByteToMessageDecoder {
    */
   private boolean onControlBodyAdded(final ByteBuf in, final List out)
     throws InvalidProtocolBufferException {
-    assert (controlBodyBytesToRead > 0);
-    assert (dataBodyBytesToRead == 0);
-    assert (inputContext == null);
+    ContextManager.getEncoderDecoderLock().lock();
+    in.markReaderIndex();
+    try {
+      assert (controlBodyBytesToRead > 0);
+      assert (dataBodyBytesToRead == 0);
+      assert (inputContext == null);
 
-    assert (controlBodyBytesToRead <= Integer.MAX_VALUE);
+      assert (controlBodyBytesToRead <= Integer.MAX_VALUE);
 
-    if (in.readableBytes() < controlBodyBytesToRead) {
-      // cannot read body now
+      int i = 0;
+      while (in.readableBytes() < controlBodyBytesToRead) {
+        // cannot read body now
+        LOG.warn("ControlMessage cannot be read ({})", i);
+        ContextManager.getEncoderDecoderLock().unlock();
+        Thread.sleep(1000);
+        ContextManager.getEncoderDecoderLock().lock();
+        i++;
+        if (i > 20) {
+          in.resetReaderIndex();
+          return false;
+        }
+      }
+
+      final byte[] bytes;
+      final int offset;
+      if (in.hasArray()) {
+        bytes = in.array();
+        offset = in.arrayOffset() + in.readerIndex();
+      } else {
+        bytes = new byte[(int) controlBodyBytesToRead];
+        in.getBytes(in.readerIndex(), bytes, 0, (int) controlBodyBytesToRead);
+        offset = 0;
+      }
+      final ByteTransferContextSetupMessage controlMessage
+        = ByteTransferContextSetupMessage.PARSER.parseFrom(bytes, offset, (int) controlBodyBytesToRead);
+      LOG.debug("ControlMessage decoded: {}", controlMessage);
+
+      out.add(controlMessage);
+      in.skipBytes((int) controlBodyBytesToRead);
+      controlBodyBytesToRead = 0;
+      return true;
+    } catch (InterruptedException e) {
+      e.printStackTrace();
       return false;
+    } finally {
+      ContextManager.getEncoderDecoderLock().unlock();
     }
-
-    final byte[] bytes;
-    final int offset;
-    if (in.hasArray()) {
-      bytes = in.array();
-      offset = in.arrayOffset() + in.readerIndex();
-    } else {
-      bytes = new byte[(int) controlBodyBytesToRead];
-      in.getBytes(in.readerIndex(), bytes, 0, (int) controlBodyBytesToRead);
-      offset = 0;
-    }
-    final ByteTransferContextSetupMessage controlMessage
-      = ByteTransferContextSetupMessage.PARSER.parseFrom(bytes, offset, (int) controlBodyBytesToRead);
-
-    out.add(controlMessage);
-    in.skipBytes((int) controlBodyBytesToRead);
-    controlBodyBytesToRead = 0;
-    return true;
   }
 
   /**

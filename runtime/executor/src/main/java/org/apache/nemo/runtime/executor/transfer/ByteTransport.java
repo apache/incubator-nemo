@@ -124,9 +124,9 @@ final class ByteTransport implements AutoCloseable {
         try {
           final ChannelFuture future = serverBootstrap.bind(host, candidatePort).await();
           if (future.cause() != null) {
-            LOG.debug(String.format("Cannot bind to %s:%d", host, candidatePort), future.cause());
+            LOG.warn("Cannot bind to {}:{} because {}", host, candidatePort, future.cause());
           } else if (!future.isSuccess()) {
-            LOG.debug("Cannot bind to {}:{}", host, candidatePort);
+            LOG.warn("Cannot bind to {}:{}", host, candidatePort);
           } else {
             listeningChannel = future.channel();
             break;
