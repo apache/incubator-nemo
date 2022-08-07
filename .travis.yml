@@ -17,7 +17,7 @@
 # under the License.
 
 # .travis.yml
-dist: jammy
+dist: xenial
 
 # For maven builds
 language: java
