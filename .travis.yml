@@ -28,7 +28,7 @@ env:
   global:
     - HADOOP_HOME="/"
   jobs:
-    - GOAL="verify"
+    - GOAL="verify -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info"
 before_install:
   - nvm install --lts # for Web UI build
 install: true
