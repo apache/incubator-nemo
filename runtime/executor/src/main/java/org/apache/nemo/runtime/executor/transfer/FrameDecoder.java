@@ -187,10 +187,10 @@ final class FrameDecoder extends ByteToMessageDecoder {
         // cannot read body now
         LOG.warn("ControlMessage cannot be read ({})", i);
         ContextManager.getEncoderDecoderLock().unlock();
-        Thread.sleep(1000);
+        Thread.sleep(200);
         ContextManager.getEncoderDecoderLock().lock();
         i++;
-        if (i > 20) {
+        if (i > 10) {
           in.resetReaderIndex();
           return false;
         }

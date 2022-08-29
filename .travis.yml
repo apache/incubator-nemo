@@ -17,13 +17,12 @@
 # under the License.
 
 # .travis.yml
-dist: trusty
+dist: bionic
 
 # For maven builds
 language: java
 jdk:
-  - oraclejdk8
-  - oraclejdk11
+  - openjdk8
   - openjdk11
 env:
   global:
