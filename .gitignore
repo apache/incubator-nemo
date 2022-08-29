@@ -14,6 +14,7 @@ build
 docs/
 debug/*
 .factorypath
+**/dependency-reduced-pom.xml
 #
 # ----------------------------------------------------------------------
 # DB Files

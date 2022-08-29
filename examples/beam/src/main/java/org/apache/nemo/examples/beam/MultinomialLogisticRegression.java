@@ -172,11 +172,11 @@ public final class MultinomialLogisticRegression {
       }
 
 
-      /**
-       * When maxMargin > 0, the original formula will cause overflow as we discuss
-       * in the previous comment.
-       * We address this by subtracting maxMargin from all the margins, so it's guaranteed
-       * that all of the new margins will be smaller than zero to prevent arithmetic overflow.
+      /*
+        When maxMargin > 0, the original formula will cause overflow as we discuss
+        in the previous comment.
+        We address this by subtracting maxMargin from all the margins, so it's guaranteed
+        that all of the new margins will be smaller than zero to prevent arithmetic overflow.
        */
       Double sum = 0.0;
       if (maxMargin > 0) {

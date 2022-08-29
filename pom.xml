@@ -76,7 +76,7 @@ under the License.
     <powermock.version>2.0.9</powermock.version>
     <surefire.version>3.0.0-M7</surefire.version>
     <junit.version>4.13.2</junit.version>
-    <checkstyle.version>8.29</checkstyle.version>
+    <checkstyle.version>8.45</checkstyle.version>
   </properties>
 
   <modules>
