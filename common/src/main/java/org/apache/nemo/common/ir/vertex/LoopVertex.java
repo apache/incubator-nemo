@@ -440,11 +440,11 @@ public class LoopVertex extends IRVertex {
     this.terminationCondition = terminationCondition;
   }
 
-  @Override
   /**
    * Parse Properties to JsonNode.
    */
-  public ObjectNode getPropertiesAsJsonNode() {
+  @Override
+  public final ObjectNode getPropertiesAsJsonNode() {
     final ObjectNode node = getIRVertexPropertiesAsJsonNode();
     node.put("remainingIteration", maxNumberOfIterations);
     node.set("DAG", getDAG().asJsonNode());

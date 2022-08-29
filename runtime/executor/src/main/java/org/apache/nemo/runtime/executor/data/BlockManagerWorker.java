@@ -240,15 +240,15 @@ public final class BlockManagerWorker {
         final BlockFetchFailureProperty.Value fetchFailure = edgeProperties.get(BlockFetchFailureProperty.class)
           .orElse(BlockFetchFailureProperty.Value.CANCEL_TASK); // the default behavior.
         if (!fetchFailure.equals(BlockFetchFailureProperty.Value.CANCEL_TASK)) {
-          /**
-           * Wait until fetching "all elements" of each block.
-           *
-           * Problem: If the task won't be cancelled upon fetch failure, then the task can potentially
-           * process blocks partially or process the same elements more than once.
-           *
-           * Solution: With this waiting, a task that fetches a block either
-           * - Processes all elements of the block
-           * - Processes no element of the block (i.e., Runs into a block fetch exception while waiting)
+          /*
+            Wait until fetching "all elements" of each block.
+
+            Problem: If the task won't be cancelled upon fetch failure, then the task can potentially
+            process blocks partially or process the same elements more than once.
+
+            Solution: With this waiting, a task that fetches a block either
+            - Processes all elements of the block
+            - Processes no element of the block (i.e., Runs into a block fetch exception while waiting)
            */
           return contextFuture
             .thenCompose(ByteInputContext::getCompletedFuture)
@@ -256,10 +256,10 @@ public final class BlockManagerWorker {
             .thenApply(streams -> new DataUtil.InputStreamIterator<>(
               streams, serializerManager.getSerializer(runtimeEdgeId)));
         } else {
-          /**
-           * Process "each element" of a block as soon as the element comes in.
-           * No worries about partial/duplicate processing here, as the task will be cancelled and restarted cleanly.
-           * Probably best performance when there is no failure.
+          /*
+            Process "each element" of a block as soon as the element comes in.
+            No worries about partial/duplicate processing here, as the task will be cancelled and restarted cleanly.
+            Probably best performance when there is no failure.
            */
           return contextFuture
             .thenApply(context -> new DataUtil.InputStreamIterator<>(context.getInputStreams(),
