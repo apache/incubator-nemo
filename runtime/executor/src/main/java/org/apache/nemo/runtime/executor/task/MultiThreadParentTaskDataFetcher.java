@@ -18,9 +18,11 @@
  */
 package org.apache.nemo.runtime.executor.task;
 
+import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
+import org.apache.nemo.common.punctuation.LatencyMark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.*;
@@ -56,6 +58,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
   private boolean firstFetch = true;
 
   private final ConcurrentLinkedQueue elementQueue;
+  private final ConcurrentLinkedQueue<DataUtil.IteratorWithNumBytes> iterators;
 
   private long serBytes = 0;
   private long encodedBytes = 0;
@@ -74,6 +77,7 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     this.readersForParentTask = readerForParentTask;
     this.firstFetch = true;
     this.elementQueue = new ConcurrentLinkedQueue();
+    this.iterators = new ConcurrentLinkedQueue<>();
     this.queueInsertionThreads = Executors.newCachedThreadPool();
   }
 
@@ -114,6 +118,8 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
       // A thread for each iterator
       queueInsertionThreads.submit(() -> {
         if (exception == null) {
+          iterators.add(iterator);
+
           // Consume this iterator to the end.
           while (iterator.hasNext()) { // blocked on the iterator.
             final Object element = iterator.next();
@@ -166,6 +172,26 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     }
   }
 
+  public Pair<Boolean, Long> getCurrSerBytes() {
+    try {
+      long currSerBytes = 0;
+      boolean isReadNotSerializedData = false;
+      for (DataUtil.IteratorWithNumBytes iterator : iterators) {
+        if (!iterator.isReadNotSerializedData()) {
+          currSerBytes += iterator.getCurrNumSerializedBytes();
+        } else {
+          isReadNotSerializedData = true;
+        }
+      }
+      return Pair.of(isReadNotSerializedData, currSerBytes);
+    } catch (final DataUtil.IteratorWithNumBytes.NumBytesNotSupportedException e) {
+      return Pair.of(false, -1L);
+    } catch (final IllegalStateException e) {
+      LOG.error("Failed to get the number of bytes of currently serialized data", e);
+      return Pair.of(false, -1L);
+    }
+  }
+
   @Override
   public void close() throws Exception {
     queueInsertionThreads.shutdown();
@@ -184,6 +210,11 @@ class MultiThreadParentTaskDataFetcher extends DataFetcher {
     @Override
     public void emitWatermark(final Watermark watermark) {
       elementQueue.offer(watermark);
+    }
+
+    @Override
+    public void emitLatencymark(final LatencyMark latencymark) {
+      throw new IllegalStateException("Should not be called");
     }
 
     @Override

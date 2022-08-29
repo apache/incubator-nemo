@@ -19,7 +19,7 @@
 package org.apache.nemo.compiler.frontend.spark.transform;
 
 import org.apache.nemo.common.ir.OutputCollector;
-import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.ir.vertex.transform.LatencymarkEmitTransform;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.spark.api.java.function.Function2;
 
@@ -31,9 +31,8 @@ import java.util.Iterator;
  *
  * @param <T> element type.
  */
-public final class ReduceTransform<T> implements Transform<T, T> {
+public final class ReduceTransform<T> extends LatencymarkEmitTransform<T, T> {
   private final Function2<T, T, T> func;
-  private OutputCollector<T> outputCollector;
   // TODO #431: Handle states in Transforms better
   private T result;
 
@@ -49,7 +48,7 @@ public final class ReduceTransform<T> implements Transform<T, T> {
 
   @Override
   public void prepare(final Context context, final OutputCollector<T> oc) {
-    this.outputCollector = oc;
+    super.prepare(context, oc);
     this.result = null;
   }
 
@@ -69,12 +68,12 @@ public final class ReduceTransform<T> implements Transform<T, T> {
       throw new RuntimeException(e);
     }
 
-    outputCollector.emit(result);
+    getOutputCollector().emit(result);
   }
 
   @Override
   public void onWatermark(final Watermark watermark) {
-    outputCollector.emitWatermark(watermark);
+    getOutputCollector().emitWatermark(watermark);
   }
 
   /**

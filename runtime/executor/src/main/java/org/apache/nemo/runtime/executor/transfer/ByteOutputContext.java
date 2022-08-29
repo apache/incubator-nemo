@@ -71,6 +71,7 @@ public class ByteOutputContext extends ByteTransferContext implements OutputCont
                     final ContextManager contextManager) {
     super(remoteExecutorId, contextId, contextDescriptor, contextManager);
     this.channel = contextManager.getChannel();
+    LOG.debug("Set up output streams for: {}, {}, {}", remoteExecutorId, contextId, contextManager);
   }
 
   /**
@@ -111,6 +112,7 @@ public class ByteOutputContext extends ByteTransferContext implements OutputCont
 
   @Override
   public final void onChannelError(@Nullable final Throwable cause) {
+    LOG.error("Channel error!");
     setChannelError(cause);
     channel.close();
   }

@@ -20,6 +20,7 @@ package org.apache.nemo.compiler.frontend.beam.transform;
 
 import org.apache.beam.sdk.util.WindowedValue;
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.punctuation.LatencyMark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.reef.io.Tuple;
 
@@ -35,11 +36,13 @@ final class TestOutputCollector<T> implements OutputCollector<WindowedValue<T>> 
   public final List<WindowedValue<T>> outputs;
   public final List<Tuple<String, WindowedValue<T>>> taggedOutputs;
   public final List<Watermark> watermarks;
+  public final List<LatencyMark> latencyMarks;
 
   TestOutputCollector() {
     this.outputs = new LinkedList<>();
     this.taggedOutputs = new LinkedList<>();
     this.watermarks = new LinkedList<>();
+    this.latencyMarks = new LinkedList<>();
   }
 
   @Override
@@ -52,6 +55,10 @@ final class TestOutputCollector<T> implements OutputCollector<WindowedValue<T>> 
     watermarks.add(watermark);
   }
 
+  @Override
+  public void emitLatencymark(LatencyMark latencymark) {
+    latencyMarks.add(latencymark);
+  }
 
   @Override
   public <O> void emit(String dstVertexId, O output) {

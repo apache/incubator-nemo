@@ -23,6 +23,7 @@ import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.ResolveOptions;
 import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.transforms.PTransform;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.transforms.windowing.IntervalWindow;
 import org.apache.beam.sdk.transforms.windowing.PaneInfo;
@@ -34,6 +35,7 @@ import org.joda.time.format.ISODateTimeFormat;
 import javax.annotation.Nullable;
 
 import static com.google.common.base.MoreObjects.firstNonNull;
+import static org.apache.nemo.examples.beam.GenericSourceSink.isHDFSPath;
 
 /**
  * This class is brought from beam/examples/common/WriteOneFilePerWindow.java.
@@ -58,16 +60,21 @@ public final class WriteOneFilePerWindow extends PTransform<PCollection<String>,
 
   @Override
   public PDone expand(final PCollection<String> input) {
-    final ResourceId resource = FileBasedSink.convertToFileResourceIfPossible(filenamePrefix);
-    TextIO.Write write =
-      TextIO.write()
-        .to(new PerWindowFiles(resource))
-        .withTempDirectory(resource.getCurrentDirectory())
-        .withWindowedWrites();
-    if (numShards != null) {
-      write = write.withNumShards(numShards);
+    if (isHDFSPath(filenamePrefix)) {
+      input.apply(ParDo.of(new HDFSWrite(filenamePrefix)));
+      return PDone.in(input.getPipeline());
+    } else {
+      final ResourceId resource = FileBasedSink.convertToFileResourceIfPossible(filenamePrefix);
+      TextIO.Write write =
+        TextIO.write()
+          .to(new PerWindowFiles(resource))
+          .withTempDirectory(resource.getCurrentDirectory())
+          .withWindowedWrites();
+      if (numShards != null) {
+        write = write.withNumShards(numShards);
+      }
+      return input.apply(write);
     }
-    return input.apply(write);
   }
 
   /**

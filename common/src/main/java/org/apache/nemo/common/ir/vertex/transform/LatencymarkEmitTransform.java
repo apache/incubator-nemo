@@ -18,28 +18,39 @@
  */
 package org.apache.nemo.common.ir.vertex.transform;
 
+import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.punctuation.LatencyMark;
-import org.apache.nemo.common.punctuation.Watermark;
 
 /**
- * This transform does not emit watermarks.
- * It may be a transform for batch operation that emits collected data when calling {@link Transform#close()}.
+ * This transform emits {@link LatencyMark}.
  *
  * @param <I> input type
  * @param <O> output type
  */
-public abstract class NoWatermarkEmitTransform<I, O> implements Transform<I, O> {
+public abstract class LatencymarkEmitTransform<I, O> implements Transform<I, O> {
+  private OutputCollector<O> outputCollector;
 
   /**
-   * @param watermark watermark
+   * @param context context for data transfer.
+   * @param oc OutputCollector to transfer data.
    */
   @Override
-  public final void onWatermark(final Watermark watermark) {
-    // do nothing
+  public void prepare(final Context context, final OutputCollector<O> oc) {
+    this.outputCollector = oc;
   }
 
+  /**
+   * get OutputCollector.
+   */
+  public OutputCollector<O> getOutputCollector() {
+    return outputCollector;
+  }
+
+  /**
+   * @param latencymark latencymark
+   */
   @Override
   public final void onLatencymark(final LatencyMark latencymark) {
-    // do nothing
+    outputCollector.emitLatencymark(latencymark);
   }
 }

@@ -33,6 +33,7 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.vertex.transform.Transform;
+import org.apache.nemo.common.punctuation.LatencyMark;
 import org.apache.nemo.compiler.frontend.beam.InMemorySideInputReader;
 import org.apache.nemo.compiler.frontend.beam.NemoPipelineOptions;
 import org.slf4j.Logger;
@@ -193,7 +194,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
    *
    * @return DoFn.
    */
-  public final DoFn getDoFn() {
+  public final DoFn<InterT, OutputT> getDoFn() {
     return doFn;
   }
 
@@ -280,8 +281,7 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
     final DoFn wrappedDoFn = wrapDoFn(doFn);
 
     // invoker
-    doFnInvoker = DoFnInvokers.invokerFor(wrappedDoFn);
-    doFnInvoker.invokeSetup();
+    doFnInvoker = DoFnInvokers.tryInvokeSetupFor(wrappedDoFn); // options?
 
     // DoFnRunners.simpleRunner takes care of all the hard stuff of running the DoFn
     // and that this approach is the standard used by most of the Beam runners
@@ -312,6 +312,17 @@ public abstract class AbstractDoFnTransform<InputT, InterT, OutputT> implements
   public final OutputCollector<WindowedValue<OutputT>> getOutputCollector() {
     return outputCollector;
   }
+
+  /**
+   * On latencymark received.
+   *
+   * @param latencymark latencymark.
+   */
+  @Override
+  public void onLatencymark(final LatencyMark latencymark) {
+    getOutputCollector().emitLatencymark(latencymark);
+  }
+
 
   @Override
   public final void close() {

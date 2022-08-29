@@ -22,38 +22,51 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
+import org.apache.nemo.common.punctuation.LatencyMark;
 import org.apache.nemo.common.punctuation.Watermark;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Fetches data from a data source.
  */
 class SourceVertexDataFetcher extends DataFetcher {
   private final Readable readable;
+  private final String taskId;
   private long boundedSourceReadTime = 0;
   private static final long WATERMARK_PERIOD = 1000; // ms
-  private final ScheduledExecutorService watermarkTriggerService;
-  private boolean watermarkTriggered = false;
+  private static final long LATENCYMARK_PERIOD = 1000; // ms
+  private final ScheduledExecutorService streamMarkTriggerService;
+  private final AtomicBoolean watermarkTriggered = new AtomicBoolean(true); // initial watermark to set up data plane
+  private final AtomicBoolean latencyMarkTriggered = new AtomicBoolean(false);
   private final boolean bounded;
 
   SourceVertexDataFetcher(final SourceVertex dataSource,
                           final Readable readable,
-                          final OutputCollector outputCollector) {
+                          final OutputCollector outputCollector,
+                          final long latencyMarkSendPeriod,
+                          final String taskId) {
     super(dataSource, outputCollector);
+    this.taskId = taskId;
     this.readable = readable;
     this.readable.prepare();
     this.bounded = dataSource.isBounded();
 
     if (!bounded) {
-      this.watermarkTriggerService = Executors.newScheduledThreadPool(1);
-      this.watermarkTriggerService.scheduleAtFixedRate(() ->
-        watermarkTriggered = true,
+      this.streamMarkTriggerService = Executors.newScheduledThreadPool(1);
+      this.streamMarkTriggerService.scheduleAtFixedRate(() ->
+        watermarkTriggered.set(true),
         WATERMARK_PERIOD, WATERMARK_PERIOD, TimeUnit.MILLISECONDS);
+      if (latencyMarkSendPeriod != -1) {
+        this.streamMarkTriggerService.scheduleAtFixedRate(() ->
+            latencyMarkTriggered.set(true),
+          latencyMarkSendPeriod, latencyMarkSendPeriod, TimeUnit.MILLISECONDS);
+      }
     } else {
-      this.watermarkTriggerService = null;
+      this.streamMarkTriggerService = null;
     }
   }
 
@@ -81,24 +94,27 @@ class SourceVertexDataFetcher extends DataFetcher {
   @Override
   public void close() throws Exception {
     readable.close();
-    if (watermarkTriggerService != null) {
-      watermarkTriggerService.shutdown();
+    if (streamMarkTriggerService != null) {
+      streamMarkTriggerService.shutdown();
     }
   }
 
   private boolean isWatermarkTriggerTime() {
-    if (watermarkTriggered) {
-      watermarkTriggered = false;
-      return true;
-    } else {
-      return false;
-    }
+    return watermarkTriggered.getAndSet(false);
+  }
+
+  private boolean isLatencyMarkTriggered() {
+    return latencyMarkTriggered.getAndSet(false);
   }
 
   private Object retrieveElement() {
     // Emit watermark
-    if (!bounded && isWatermarkTriggerTime()) {
-      return new Watermark(readable.readWatermark());
+    if (!bounded) {
+      if (isWatermarkTriggerTime()) {
+        return new Watermark(readable.readWatermark());
+      } else if (isLatencyMarkTriggered()) {
+        return new LatencyMark(taskId, System.currentTimeMillis());
+      }
     }
 
     // Data

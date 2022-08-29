@@ -17,13 +17,12 @@
 # under the License.
 
 # .travis.yml
-dist: trusty
+dist: bionic
 
 # For maven builds
 language: java
 jdk:
-  - oraclejdk8
-  - oraclejdk11
+  - openjdk8
   - openjdk11
 env:
   global:
@@ -31,7 +30,7 @@ env:
   jobs:
     - GOAL="verify -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info"
 before_install:
-  - nvm install node  # for Web UI build
+  - nvm install --lts # for Web UI build
 install: true
 script:
   # the following command line builds the project, runs the tests with coverage

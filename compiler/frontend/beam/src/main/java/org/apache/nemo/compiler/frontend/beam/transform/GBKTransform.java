@@ -31,6 +31,7 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.WindowingStrategy;
 import org.apache.nemo.common.ir.OutputCollector;
+import org.apache.nemo.common.punctuation.LatencyMark;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -297,6 +298,12 @@ public final class GBKTransform<K, InputT, OutputT>
         timerInternals.advanceOutputWatermark(new Instant(output.getTimestamp().getMillis() + 1));
       }
       oc.emit(output);
+    }
+
+    /** Emit latencymark. */
+    @Override
+    public final void emitLatencymark(final LatencyMark latencymark) {
+      oc.emitLatencymark(latencymark);
     }
 
     /** Emit watermark. */

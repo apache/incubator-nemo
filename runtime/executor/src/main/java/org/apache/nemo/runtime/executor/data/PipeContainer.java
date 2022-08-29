@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -72,8 +73,12 @@ public final class PipeContainer {
     public List<T> getValuesBlocking() {
       lock.lock();
       try {
-        if (!isCountSatistified()) {
-          condition.await();
+        while (!isCountSatistified()) {
+          if (condition.await(5, TimeUnit.SECONDS)) {
+            LOG.info("Await is done!");
+          } else {
+            LOG.info("Awaiting timeout.. while ({}/{}) {}", indexToValue.size(), expected, indexToValue.values());
+          }
         }
         return new ArrayList<>(indexToValue.values());
       } catch (InterruptedException e) {

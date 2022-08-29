@@ -43,36 +43,38 @@ under the License.
     <java.version>1.8</java.version>
     <maven.compiler.source>${java.version}</maven.compiler.source>
     <maven.compiler.target>${java.version}</maven.compiler.target>
-    <maven.compiler.version>3.8.1</maven.compiler.version>
-    <maven.shade.version>3.2.4</maven.shade.version>
-    <maven.deploy.version>3.0.0-M1</maven.deploy.version>
-    <maven.javadoc.version>3.3.0</maven.javadoc.version>
+    <maven.compiler.version>3.10.1</maven.compiler.version>
+    <maven.shade.version>3.2.4</maven.shade.version> <!-- 3.3.0 doesn't work on mac -->
+    <maven.deploy.version>3.0.0</maven.deploy.version>
+    <maven.javadoc.version>3.4.0</maven.javadoc.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <auto-service.version>1.0</auto-service.version>
+    <auto-service.version>1.0.1</auto-service.version>
     <beam.version>2.24.0</beam.version> <!-- > 2.25 needs migration -->
     <spark.version>2.4.4</spark.version>
     <scala.version>2.12.10</scala.version>
     <kryo.version>4.0.2</kryo.version>
     <reef.version>0.16.0</reef.version>
-    <protobuf.version>3.17.3</protobuf.version>
+    <protobuf.version>3.21.2</protobuf.version>
     <hadoop.version>2.7.2</hadoop.version>
     <log4j.configuration>file://log4j.properties</log4j.configuration>
-    <netty.version>4.1.66.Final</netty.version>
-    <guava.version>23.0</guava.version>
-    <grpc.version>1.39.0</grpc.version>
+    <netty.version>4.1.79.Final</netty.version>
+    <guava.version>31.1-jre</guava.version>
+    <grpc.version>1.46.0</grpc.version> <!-- > 1.47.0 needs migration -->
     <jackson.version>2.10.5</jackson.version> <!-- > 2.11 needs migration -->
     <netlib.version>1.1.2</netlib.version>
-    <jetty-server.version>9.4.43.v20210629</jetty-server.version>
-    <jetty-servlet.version>9.4.43.v20210629</jetty-servlet.version>
+    <jetty-server.version>9.4.48.v20220622</jetty-server.version>
+    <jetty-servlet.version>9.4.48.v20220622</jetty-servlet.version>
     <commons-math.version>3.6.1</commons-math.version>
     <commons-lang.version>3.12.0</commons-lang.version>
-    <sqlite-jdbc.version>3.36.0</sqlite-jdbc.version>
-    <postgresql.version>42.2.23</postgresql.version>
-    <slf4j.version>1.7.32</slf4j.version>
+    <commons-io.version>2.11.0</commons-io.version>
+    <lz4.version>1.8.0</lz4.version>
+    <sqlite-jdbc.version>3.36.0.3</sqlite-jdbc.version>
+    <postgresql.version>42.4.0</postgresql.version>
+    <slf4j.version>1.7.36</slf4j.version>
     <!-- Tests -->
-    <mockito.version>3.11.2</mockito.version>
+    <mockito.version>3.12.4</mockito.version>
     <powermock.version>2.0.9</powermock.version>
-    <surefire.version>3.0.0-M4</surefire.version> <!-- > M5 errors with Java11 -->
+    <surefire.version>3.0.0-M7</surefire.version>
     <junit.version>4.13.2</junit.version>
     <checkstyle.version>8.29</checkstyle.version>
   </properties>
@@ -244,7 +246,7 @@ under the License.
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
-        <version>3.2.0</version>
+        <version>3.3.0</version>
         <executions>
           <execution>
             <id>add-source</id>
@@ -324,6 +326,7 @@ under the License.
             <!-- Maven build files -->
             <exclude>**/target/**</exclude>
             <exclude>.factorypath</exclude>
+            <exclude>**/dependency-reduced-pom.xml</exclude>
             <!-- REEF run files -->
             <exclude>**/REEF_LOCAL_RUNTIME/**</exclude>
             <!-- Resources -->

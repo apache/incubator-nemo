@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.executor.datatransfer;
 
+import org.apache.nemo.common.punctuation.LatencyMark;
 import org.apache.nemo.common.punctuation.Watermark;
 
 import java.util.Optional;
@@ -39,6 +40,15 @@ public interface OutputWriter {
    * @param watermark watermark
    */
   void writeWatermark(Watermark watermark);
+
+  /**
+   * Writes latencymark to all edges.
+   * It does not consider buffered time in windows.
+   * transfer to the next task immediately.
+   *
+   * @param latencymark latencymark
+   */
+  void writeLatencymark(LatencyMark latencymark);
 
   /**
    * @return the total written bytes.
