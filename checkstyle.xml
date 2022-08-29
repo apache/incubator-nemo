@@ -24,18 +24,20 @@ under the License.
 <!--
   Checkstyle configuration that checks the sun coding conventions from:
     - the Java Language Specification at
-      http://java.sun.com/docs/books/jls/second_edition/html/index.html
-    - the Sun Code Conventions at http://java.sun.com/docs/codeconv/
+      https://docs.oracle.com/javase/specs/jls/se11/html/index.html
+    - the Sun Code Conventions at https://www.oracle.com/java/technologies/javase/codeconventions-contents.html
     - the Javadoc guidelines at
-      http://java.sun.com/j2se/javadoc/writingdoccomments/index.html
-    - the JDK Api documentation http://java.sun.com/j2se/docs/api/index.html
+      https://www.oracle.com/technical-resources/articles/java/javadoc-tool.html
+    - the JDK Api documentation https://docs.oracle.com/en/java/javase/11/
     - some best practices
   Checkstyle is very configurable. Be sure to read the documentation at
-  http://checkstyle.sf.net (or in your downloaded distribution).
+  https://checkstyle.org (or in your downloaded distribution).
   Most Checks are configurable, be sure to consult the documentation.
   To completely disable a check, just comment it out or delete it from the file.
+  To suppress certain violations please review suppression filters.
   Finally, it is worth reading the documentation.
 -->
+
 <module name="Checker">
   <!--
       If you set the basedir property below, then all reported file
