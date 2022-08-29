@@ -37,7 +37,7 @@
     "@dagrejs/graphlib": "^2.1.4",
     "dagre": "^0.8.2",
     "element-ui": "^2.4.9",
-    "fabric": "^2.4.3",
+    "fabric": "^5.2.4",
     "npm": "^6.4.1",
     "nuxt": "^2.15.8",
     "uuid": "^3.3.2",
