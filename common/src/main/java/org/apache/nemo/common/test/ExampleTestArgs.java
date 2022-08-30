@@ -22,7 +22,7 @@ package org.apache.nemo.common.test;
  * Test Arguments for Examples.
  */
 public final class ExampleTestArgs {
-  public static final int TIMEOUT = 300000;
+  public static final int TIMEOUT = 500000;
   private static String fileBasePath;
 
   /**
