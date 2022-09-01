@@ -41,6 +41,7 @@ public abstract class LatencymarkEmitTransform<I, O> implements Transform<I, O> 
 
   /**
    * get OutputCollector.
+   * @return the output collector.
    */
   public OutputCollector<O> getOutputCollector() {
     return outputCollector;
