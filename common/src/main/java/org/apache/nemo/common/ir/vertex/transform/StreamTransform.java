@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * A {@link Transform} relays input data from upstream vertex to downstream vertex promptly.
- * This transform can be used for merging input data into the {@link OutputCollector}.
+ * This transform can be used for merging input data into the {@link org.apache.nemo.common.ir.OutputCollector}.
  *
  * @param <T> input/output type.
  */
