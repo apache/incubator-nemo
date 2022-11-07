@@ -37,7 +37,7 @@ jobs:
     strategy:
       matrix:
         java_version: ['11']
-        os: [ubuntu-latest, ubuntu-18.04]
+        os: [ubuntu-20.04, ubuntu-18.04]
 
     name: Build on Java ${{ matrix.java_version }} and ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
