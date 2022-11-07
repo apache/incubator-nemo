@@ -40,3 +40,4 @@ github:
     branch_b:
       required_signatures: true
   del_branch_on_merge: true
+
