@@ -28,8 +28,6 @@ github:
         contexts:
           - workflows/maven
           - workflows/node.js
-#          - gh-infra/jenkins
-#          - another/build-that-must-pass
 
       required_pull_request_reviews:
         dismiss_stale_reviews: true
