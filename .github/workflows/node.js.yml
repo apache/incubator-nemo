@@ -32,7 +32,9 @@ jobs:
     strategy:
       matrix:
         node-version: [14.x, 16.x]
+        os: [ubuntu-latest, ubuntu-18.04]
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+    runs-on: ${{ matrix.os }}
 
     steps:
     - run: pushd webui
