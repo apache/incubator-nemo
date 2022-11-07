@@ -22,7 +22,6 @@ dist: bionic
 # For maven builds
 language: java
 jdk:
-  - openjdk8
   - openjdk11
 env:
   global:
@@ -30,7 +29,7 @@ env:
   jobs:
     - GOAL="verify -B -q -ff -Dsurefire.useFile=false -Dorg.slf4j.simpleLogger.defaultLogLevel=info"
 before_install:
-  - nvm install --lts # for Web UI build
+  - nvm install 16.15.1 # for Web UI build
 install: true
 script:
   # the following command line builds the project, runs the tests with coverage
