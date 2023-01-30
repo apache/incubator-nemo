@@ -49,8 +49,9 @@ name: SonarCloud analysis
 on:
   push:
     branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
+#    SONAR_TOKEN value cannot be filled in from a fork :(
+#  pull_request:
+#    branches: [ "master" ]
   workflow_dispatch:
 
 permissions:
