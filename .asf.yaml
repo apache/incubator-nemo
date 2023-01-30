@@ -26,8 +26,8 @@ github:
         strict: true
         # contexts are the names of checks that must pass
         contexts:
-          - Java CI with Maven / Build on Java 11 and ubuntu-18.04 (pull_request)
-          - Node.js CI / build (16.x, ubuntu-18.04) (pull_request)
+          - Build on Java 11 and ubuntu-18.04
+          - Build on Node 16.x and ubuntu-18.04
 
       required_pull_request_reviews:
         dismiss_stale_reviews: true
