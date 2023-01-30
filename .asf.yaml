@@ -26,8 +26,8 @@ github:
         strict: true
         # contexts are the names of checks that must pass
         contexts:
-          - workflows/maven
-          - workflows/node.js
+          - Build on Java 11 and ubuntu-18.04
+          - Build on Node 16.x and ubuntu-18.04
 
       required_pull_request_reviews:
         dismiss_stale_reviews: true
