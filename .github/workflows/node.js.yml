@@ -34,6 +34,8 @@ jobs:
         node-version: [14.x, 16.x]
         os: [ubuntu-latest, ubuntu-18.04]
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+
+    name: Build on Node ${{ matrix.node-version }} and ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
 
     steps:

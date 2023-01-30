@@ -2,7 +2,6 @@
 
 [![Java CI with Maven](https://github.com/apache/incubator-nemo/actions/workflows/maven.yml/badge.svg)](https://github.com/apache/incubator-nemo/actions/workflows/maven.yml)
 [![Node.js CI](https://github.com/apache/incubator-nemo/actions/workflows/node.js.yml/badge.svg)](https://github.com/apache/incubator-nemo/actions/workflows/node.js.yml)
-[![Build Status](https://app.travis-ci.com/apache/incubator-nemo.svg?branch=master)](https://app.travis-ci.com/apache/incubator-nemo)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=org.apache.nemo%3Anemo-project&metric=alert_status)](https://sonarcloud.io/dashboard?id=org.apache.nemo%3Anemo-project)
 
 A Data Processing System for Flexible Employment With Different Deployment Characteristics.
