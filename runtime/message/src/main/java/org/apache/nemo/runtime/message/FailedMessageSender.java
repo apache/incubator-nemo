@@ -18,7 +18,7 @@
  */
 package org.apache.nemo.runtime.message;
 
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 
 import java.util.concurrent.CompletableFuture;
 

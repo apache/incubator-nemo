@@ -36,13 +36,19 @@ public class CoderFactoryTest {
 
     // Test empty bytes.
     byte[] elementToTest = new byte[0];
-    byte[] decodedBytes = encodeAndDecodeElement(encoderFactory, decoderFactory, elementToTest);
+    byte[] decodedBytes = (byte[]) encodeAndDecodeElement(encoderFactory, decoderFactory, elementToTest);
     Assert.assertArrayEquals(elementToTest, decodedBytes);
 
     // Test filled bytes.
     elementToTest = "Hello NEMO!".getBytes();
-    decodedBytes = encodeAndDecodeElement(encoderFactory, decoderFactory, elementToTest);
+    decodedBytes = (byte[]) encodeAndDecodeElement(encoderFactory, decoderFactory, elementToTest);
     Assert.assertArrayEquals(elementToTest, decodedBytes);
+  }
+
+  private byte[] encodeAndDecodeElement(BytesEncoderFactory encoderFactory,
+                                        BytesDecoderFactory decoderFactory,
+                                        byte[] elementToTest) {
+    return this.encodeAndDecodeElement(encoderFactory, decoderFactory, elementToTest);
   }
 
   /**
@@ -55,8 +61,8 @@ public class CoderFactoryTest {
    * @return the decoded element.
    */
   private <T> T encodeAndDecodeElement(final EncoderFactory<T> encoderFactory,
-                                                     final DecoderFactory<T> decoderFactory,
-                                                     final T element) throws Exception {
+                                       final DecoderFactory<T> decoderFactory,
+                                       final T element) throws Exception {
     final byte[] encodedElement;
     try (final ByteArrayOutputStream out = new ByteArrayOutputStream()) {
       final EncoderFactory.Encoder<T> encoder = encoderFactory.create(out);

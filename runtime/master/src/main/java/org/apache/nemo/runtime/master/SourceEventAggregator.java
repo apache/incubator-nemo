@@ -1,6 +1,6 @@
 package org.apache.nemo.runtime.master;
 
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.master.backpressure.Backpressure;
 import org.apache.nemo.runtime.master.scaler.Scaler;
 import org.apache.nemo.runtime.message.MessageContext;

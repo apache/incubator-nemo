@@ -28,7 +28,7 @@ import io.netty.handler.codec.LengthFieldPrepender;
 import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.offloading.common.Pair;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.message.*;
 import org.apache.reef.tang.InjectionFuture;
 import org.apache.reef.tang.annotations.Parameter;

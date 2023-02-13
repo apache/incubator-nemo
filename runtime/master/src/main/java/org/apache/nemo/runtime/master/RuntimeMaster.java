@@ -29,7 +29,7 @@ import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.runtime.common.HDFSUtils;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.master.lambda.LambdaContainerManager;
 import org.apache.nemo.runtime.master.metric.MetricMessageHandler;

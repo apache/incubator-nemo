@@ -3,7 +3,7 @@ package org.apache.nemo.runtime.executor.common;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.common.ControlEventHandler;
 import org.apache.nemo.runtime.executor.common.ExecutorMetrics;
 import org.apache.nemo.runtime.executor.common.ExecutorThread;

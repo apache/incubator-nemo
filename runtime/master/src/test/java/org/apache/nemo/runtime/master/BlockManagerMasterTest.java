@@ -21,7 +21,7 @@ package org.apache.nemo.runtime.master;
 import org.apache.nemo.common.ir.IdManager;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.exception.AbsentBlockException;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageEnvironment;
 import org.apache.nemo.runtime.message.local.LocalMessageDispatcher;
 import org.apache.nemo.runtime.message.local.LocalMessageEnvironment;
 import org.apache.nemo.runtime.common.state.BlockState;
@@ -48,7 +48,7 @@ public final class BlockManagerMasterTest {
   @Before
   public void setUp() throws Exception {
     final Injector injector = LocalMessageEnvironment.forkInjector(LocalMessageDispatcher.getInjector(),
-        MessageEnvironment.MASTER_COMMUNICATION_ID);
+        MessageEnvironment.MASTER_ID);
     blockManagerMaster = injector.getInstance(BlockManagerMaster.class);
   }
 

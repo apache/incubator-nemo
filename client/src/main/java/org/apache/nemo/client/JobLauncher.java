@@ -28,7 +28,7 @@ import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.PolicyConf;
 import org.apache.nemo.driver.NemoDriver;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.nemo.runtime.common.plan.PlanRewriter;
 import org.apache.nemo.runtime.master.lambda.LambdaAWSResourceRequester;

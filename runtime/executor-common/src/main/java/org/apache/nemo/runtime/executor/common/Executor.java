@@ -27,7 +27,7 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.exception.UnknownFailureCauseException;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;

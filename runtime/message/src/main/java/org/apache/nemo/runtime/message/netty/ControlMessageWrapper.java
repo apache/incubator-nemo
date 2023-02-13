@@ -1,6 +1,6 @@
 package org.apache.nemo.runtime.message.netty;
 
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 
 public final class ControlMessageWrapper {
 

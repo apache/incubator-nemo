@@ -19,7 +19,7 @@
 package org.apache.nemo.runtime.message.netty;
 
 import io.netty.channel.Channel;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.message.AbstractMessageContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -20,7 +20,7 @@ package org.apache.nemo.client;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.reef.annotations.audience.ClientSide;
 import org.apache.reef.tang.Configuration;
 import org.apache.reef.tang.Injector;

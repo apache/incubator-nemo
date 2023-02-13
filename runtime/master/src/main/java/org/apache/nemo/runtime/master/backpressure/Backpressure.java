@@ -2,7 +2,7 @@ package org.apache.nemo.runtime.master.backpressure;
 
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 

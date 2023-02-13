@@ -3,7 +3,7 @@ package org.apache.nemo.runtime.master.scaler;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.PolicyConf;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.master.ClientRPC;
 import org.apache.nemo.runtime.master.ScaleInOutManager;
 import org.apache.nemo.runtime.master.backpressure.Backpressure;

@@ -103,10 +103,20 @@ under the License.
         </exclusions>
       </dependency>
         <dependency>
+            <groupId>javax.annotation</groupId>
+            <artifactId>javax.annotation-api</artifactId>
+            <version>1.3.2</version>
+        </dependency>
+        <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-testing</artifactId>
             <version>${grpc.version}</version>
             <scope>test</scope>
         </dependency>
+      <dependency>
+        <groupId>org.apache.nemo</groupId>
+        <artifactId>nemo-runtime-message</artifactId>
+        <version>0.2-SNAPSHOT</version>
+      </dependency>
     </dependencies>
 </project>

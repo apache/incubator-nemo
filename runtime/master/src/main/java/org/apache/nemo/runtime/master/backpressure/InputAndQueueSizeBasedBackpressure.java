@@ -4,7 +4,7 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.PolicyConf;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.master.ClientRPC;
 import org.apache.nemo.runtime.master.metric.ExecutorMetricInfo;
 import org.apache.nemo.runtime.master.scaler.ExecutorMetricMap;

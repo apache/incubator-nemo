@@ -1,8 +1,8 @@
 package org.apache.nemo.compiler.frontend.beam.transform;
 
-import org.apache.beam.repackaged.beam_runners_core_java.com.google.common.collect.HashBasedTable;
-import org.apache.beam.repackaged.beam_runners_core_java.com.google.common.collect.Table;
-import org.apache.beam.repackaged.beam_sdks_java_core.com.google.common.base.MoreObjects;
+import com.google.common.base.MoreObjects;
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
 import org.apache.beam.runners.core.StateNamespace;
 import org.apache.beam.runners.core.TimerInternals;
 import org.apache.beam.sdk.state.*;

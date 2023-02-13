@@ -23,6 +23,7 @@ import org.apache.beam.runners.core.construction.SerializablePipelineOptions;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFnSchemaInformation;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvoker;
 import org.apache.beam.sdk.transforms.reflect.DoFnInvokers;
@@ -39,10 +40,8 @@ import org.apache.nemo.common.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import javax.annotation.Nullable;
+import java.util.*;
 
 /**
  * DoFn transform implementation with push backs for side inputs.
@@ -87,6 +86,9 @@ public final class PushBackOffloadingTransform<InputT, OutputT> implements Offlo
   private boolean bundleFinished = true;
   private final DisplayData displayData;
   private transient OffloadingContext context;
+
+  private final DoFnSchemaInformation doFnSchemaInformation;
+  private final Map<String, PCollectionView<?>> sideInputMapping;
   /**
    * PushBackDoFnTransform Constructor.
    */
@@ -98,7 +100,9 @@ public final class PushBackOffloadingTransform<InputT, OutputT> implements Offlo
                                      final WindowingStrategy<?, ?> windowingStrategy,
                                      final Map<Integer, PCollectionView<?>> sideInputs,
                                      final PipelineOptions options,
-                                     final DisplayData displayData) {
+                                     final DisplayData displayData,
+                                     final DoFnSchemaInformation doFnSchemaInformation,
+                                     final Map<String, PCollectionView<?>> sideInputMapping) {
     this.doFn = doFn;
     this.inputCoder = inputCoder;
     this.outputCoders = outputCoders;
@@ -112,6 +116,8 @@ public final class PushBackOffloadingTransform<InputT, OutputT> implements Offlo
     this.curPushedBackWatermark = Long.MAX_VALUE;
     this.curInputWatermark = Long.MIN_VALUE;
     this.curOutputWatermark = Long.MIN_VALUE;
+    this.doFnSchemaInformation = doFnSchemaInformation;
+    this.sideInputMapping = sideInputMapping;
   }
 
 
@@ -212,7 +218,9 @@ public final class PushBackOffloadingTransform<InputT, OutputT> implements Offlo
       stepContext,
       inputCoder,
       outputCoders,
-      windowingStrategy);
+      windowingStrategy,
+      doFnSchemaInformation,
+      sideInputMapping);
 
     pushBackRunner = sideInputs.isEmpty()
       ? null

@@ -5,7 +5,7 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import org.apache.nemo.offloading.common.Pair;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.message.MessageEnvironment;
 import org.apache.nemo.runtime.message.MessageListener;
 import org.apache.nemo.runtime.message.ReplyFutureMap;
@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
-import static org.apache.nemo.runtime.common.comm.ControlMessage.MessageType.InitRegistration;
+import static org.apache.nemo.runtime.message.comm.ControlMessage.MessageType.InitRegistration;
 import static org.apache.nemo.runtime.message.netty.ControlMessageWrapper.MsgType.Reply;
 
 @ChannelHandler.Sharable

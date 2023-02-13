@@ -1,6 +1,6 @@
 package org.apache.nemo.runtime.master;
 
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 
 import javax.inject.Inject;
 import java.util.concurrent.LinkedBlockingQueue;

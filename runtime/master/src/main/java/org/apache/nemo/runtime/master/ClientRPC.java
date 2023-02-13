@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.master;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.EventHandler;
 import org.apache.reef.wake.impl.SyncStage;
@@ -147,7 +147,7 @@ public final class ClientRPC {
   }
 
   /**
-   * Provides encoder for {@link org.apache.nemo.runtime.common.comm.ControlMessage.DriverToClientMessage}.
+   * Provides encoder for {@link org.apache.nemo.runtime.message.comm.ControlMessage.DriverToClientMessage}.
    */
   private static final class DriverToClientMessageEncoder implements Encoder<ControlMessage.DriverToClientMessage> {
     @Override

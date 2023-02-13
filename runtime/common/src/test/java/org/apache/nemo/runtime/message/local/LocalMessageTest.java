@@ -18,6 +18,7 @@
  */
 package org.apache.nemo.runtime.message.local;
 
+import org.apache.nemo.runtime.message.*;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Assert;
@@ -39,9 +40,12 @@ public class LocalMessageTest {
     final String executorOneNodeId = "EXECUTOR_ONE_NODE";
     final String executorTwoNodeId = "EXECUTOR_TWO_NODE";
 
-    final String listenerIdToDriver = "ToDriver";
-    final String secondListenerIdToDriver = "SecondToDriver";
-    final String listenerIdBetweenExecutors = "BetweenExecutors";
+    final MessageEnvironment.ListenerType listenerIdToDriver =
+      MessageEnvironment.ListenerType.valueOf("ToDriver");
+    final MessageEnvironment.ListenerType secondListenerIdToDriver =
+      MessageEnvironment.ListenerType.valueOf("SecondToDriver");
+    final MessageEnvironment.ListenerType listenerIdBetweenExecutors =
+      MessageEnvironment.ListenerType.valueOf("BetweenExecutors");
 
     final Injector injector = TANG.newInjector(TANG.newConfigurationBuilder()
         .bindImplementation(MessageEnvironment.class, LocalMessageEnvironment.class).build());

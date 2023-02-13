@@ -3,7 +3,7 @@ package org.apache.nemo.runtime.executor.offloading;
 import io.netty.channel.Channel;
 import org.apache.nemo.offloading.common.OffloadingMasterEvent;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.common.ExecutorMetrics;
 import org.apache.nemo.runtime.executor.common.Serializer;
 

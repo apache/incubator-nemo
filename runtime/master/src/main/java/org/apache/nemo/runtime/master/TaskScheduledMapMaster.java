@@ -7,7 +7,7 @@ import org.apache.nemo.common.TaskLocationMap;
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.master.lambda.LambdaTaskContainerEventHandler;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;

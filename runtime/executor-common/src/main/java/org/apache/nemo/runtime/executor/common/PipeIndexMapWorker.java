@@ -2,7 +2,7 @@ package org.apache.nemo.runtime.executor.common;
 
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

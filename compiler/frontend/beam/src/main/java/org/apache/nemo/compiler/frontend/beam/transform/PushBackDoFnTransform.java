@@ -27,6 +27,7 @@ import io.netty.buffer.Unpooled;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFnSchemaInformation;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
 import org.apache.beam.sdk.util.WindowedValue;
@@ -78,10 +79,13 @@ public final class PushBackDoFnTransform<InputT, OutputT> extends AbstractDoFnTr
                                final Map<Integer, PCollectionView<?>> sideInputs,
                                final PipelineOptions options,
                                final DisplayData displayData,
+                               final DoFnSchemaInformation doFnSchemaInformation,
+                               final Map<String, PCollectionView<?>> sideInputMapping,
                                final Coder mainCoder,
                                final Coder sideCoder) {
     super(doFn, inputCoder, outputCoders, mainOutputTag,
-      additionalOutputTags, windowingStrategy, sideInputs, options, displayData);
+      additionalOutputTags, windowingStrategy, sideInputs, options, displayData,
+      doFnSchemaInformation, sideInputMapping);
     this.curPushedBackWatermark = Long.MAX_VALUE;
     this.curInputWatermark = Long.MIN_VALUE;
     this.curOutputWatermark = Long.MIN_VALUE;

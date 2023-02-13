@@ -5,7 +5,7 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.*;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.common.PipeIndexMapWorker;
 import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;
 import org.apache.nemo.runtime.executor.common.*;

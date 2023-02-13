@@ -21,7 +21,7 @@ package org.apache.nemo.runtime.master.metric;
 import javax.inject.Inject;
 
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.common.metric.Metric;
 import org.apache.reef.annotations.audience.DriverSide;

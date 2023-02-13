@@ -7,7 +7,7 @@ import org.apache.nemo.common.ir.edge.RuntimeEdge;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.common.ControlEventHandler;
 import org.apache.nemo.runtime.executor.common.PipeIndexMapWorker;
 import org.apache.nemo.runtime.executor.common.TaskExecutorMapWrapper;

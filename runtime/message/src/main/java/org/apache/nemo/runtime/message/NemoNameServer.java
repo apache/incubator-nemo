@@ -2,7 +2,7 @@ package org.apache.nemo.runtime.message;
 
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang.SerializationUtils;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.reef.wake.remote.address.LocalAddressProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

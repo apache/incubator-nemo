@@ -22,7 +22,7 @@ import com.google.common.annotations.VisibleForTesting;
 import org.apache.nemo.common.Pair;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.master.ExecutorRepresenter;
 import org.apache.reef.annotations.audience.DriverSide;

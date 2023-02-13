@@ -1,7 +1,7 @@
 package org.apache.nemo.runtime.master;
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

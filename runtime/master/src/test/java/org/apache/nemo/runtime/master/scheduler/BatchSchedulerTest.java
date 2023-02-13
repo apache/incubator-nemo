@@ -23,15 +23,16 @@ import org.apache.nemo.common.ir.edge.Stage;
 import org.apache.nemo.common.ir.edge.StageEdge;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
-import org.apache.nemo.runtime.common.message.MessageSender;
 import org.apache.nemo.runtime.common.plan.*;
+import org.apache.nemo.runtime.master.ExecutorShutdownHandler;
 import org.apache.nemo.runtime.master.PlanStateManager;
+import org.apache.nemo.runtime.master.SerializedTaskMap;
 import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
 import org.apache.nemo.runtime.master.BlockManagerMaster;
 import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenterImpl;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
 import org.apache.nemo.common.dag.DAG;
+import org.apache.nemo.runtime.message.MessageSender;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
@@ -64,6 +65,8 @@ public final class BatchSchedulerTest {
   private PlanStateManager planStateManager;
   private ExecutorRegistry executorRegistry;
   private final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
+  private final SerializedTaskMap serializedTaskMap = mock(SerializedTaskMap.class);
+  private final String optPolicy = mock(String.class);
 
   private static final int EXECUTOR_CAPACITY = 20;
 
@@ -91,8 +94,9 @@ public final class BatchSchedulerTest {
     final ResourceSpecification computeSpec =
         new ResourceSpecification(ResourcePriorityProperty.COMPUTE, EXECUTOR_CAPACITY, 0);
     final Function<String, DefaultExecutorRepresenterImpl> computeSpecExecutorRepresenterGenerator = executorId ->
-        new DefaultExecutorRepresenterImpl(executorId, computeSpec, mockMsgSender, activeContext, serializationExecutorService,
-            executorId);
+        new DefaultExecutorRepresenterImpl(executorId, computeSpec, mockMsgSender,
+          (ExecutorShutdownHandler) activeContext, serializationExecutorService,
+          executorId, serializedTaskMap, optPolicy);
     final DefaultExecutorRepresenterImpl a3 = computeSpecExecutorRepresenterGenerator.apply("a3");
     final DefaultExecutorRepresenterImpl a2 = computeSpecExecutorRepresenterGenerator.apply("a2");
     final DefaultExecutorRepresenterImpl a1 = computeSpecExecutorRepresenterGenerator.apply("a1");
@@ -100,8 +104,9 @@ public final class BatchSchedulerTest {
     final ResourceSpecification storageSpec =
         new ResourceSpecification(ResourcePriorityProperty.TRANSIENT, EXECUTOR_CAPACITY, 0);
     final Function<String, DefaultExecutorRepresenterImpl> storageSpecExecutorRepresenterGenerator = executorId ->
-        new DefaultExecutorRepresenterImpl(executorId, storageSpec, mockMsgSender, activeContext, serializationExecutorService,
-            executorId);
+        new DefaultExecutorRepresenterImpl(executorId, storageSpec, mockMsgSender,
+          (ExecutorShutdownHandler) activeContext, serializationExecutorService,
+          executorId, serializedTaskMap, optPolicy);
     final DefaultExecutorRepresenterImpl b2 = storageSpecExecutorRepresenterGenerator.apply("b2");
     final DefaultExecutorRepresenterImpl b1 = storageSpecExecutorRepresenterGenerator.apply("b1");
 

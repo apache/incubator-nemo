@@ -18,13 +18,13 @@
  */
 package org.apache.nemo.runtime.common.plan;
 
+import net.jcip.annotations.ThreadSafe;
+import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.nemo.common.ir.IRDAG;
 import org.apache.nemo.common.ir.edge.IREdge;
 import org.apache.nemo.common.ir.edge.executionproperty.CommunicationPatternProperty;
 import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
-import net.jcip.annotations.ThreadSafe;
-import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
 import org.apache.nemo.common.ir.vertex.utility.ConditionalRouterVertex;
 import org.apache.nemo.common.ir.vertex.utility.SrcStreamVertex;
@@ -35,7 +35,10 @@ import org.apache.reef.annotations.audience.DriverSide;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import javax.inject.Inject;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;

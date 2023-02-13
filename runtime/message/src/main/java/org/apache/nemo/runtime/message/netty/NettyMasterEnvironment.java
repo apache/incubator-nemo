@@ -28,7 +28,7 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 import org.apache.nemo.common.NettyServerTransport;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.Pair;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.message.*;
 import org.apache.reef.tang.annotations.Parameter;
 import org.apache.reef.wake.IdentifierFactory;

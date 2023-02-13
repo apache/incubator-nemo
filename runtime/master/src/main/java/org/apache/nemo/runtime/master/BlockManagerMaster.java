@@ -20,7 +20,7 @@ package org.apache.nemo.runtime.master;
 
 import org.apache.nemo.common.exception.IllegalMessageException;
 import org.apache.nemo.common.exception.UnknownExecutionStateException;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.common.exception.AbsentBlockException;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.state.BlockState;

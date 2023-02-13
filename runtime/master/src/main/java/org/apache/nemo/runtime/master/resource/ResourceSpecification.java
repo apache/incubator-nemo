@@ -20,6 +20,9 @@ package org.apache.nemo.runtime.master.resource;
 
 import org.apache.nemo.common.RuntimeIdManager;
 
+import java.util.OptionalDouble;
+import java.util.OptionalInt;
+
 /**
  * Represents the specifications of a resource.
  */
@@ -31,6 +34,12 @@ public final class ResourceSpecification {
   private final int slot;
   private final int memory;
   private final int poisonSec; // -1 if this resources is not poisoned
+
+  public ResourceSpecification(final String containerType,
+                               final int capacity,
+                               final int memory) {
+    this(containerType, capacity, 0, memory, -1);
+  }
 
   public ResourceSpecification(final String containerType,
                                final int capacity,

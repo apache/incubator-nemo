@@ -23,12 +23,11 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.protobuf.ByteString;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.runtime.master.*;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.master.scheduler.PairStageTaskManager;
-import org.apache.nemo.runtime.message.MessageSender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -28,7 +28,7 @@ import org.apache.nemo.compiler.optimizer.pass.compiletime.annotating.ResourceSi
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.NettyVMStateStore;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.DefaultByteTransportImpl;
 import org.apache.nemo.runtime.executor.common.controlmessages.DefaultControlEventHandlerImpl;

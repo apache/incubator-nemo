@@ -4,7 +4,7 @@ import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.Channel;
 import org.apache.nemo.offloading.common.EventHandler;
 import org.apache.nemo.offloading.common.OffloadingMasterEvent;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.master.lambda.LambdaContainerRequester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,7 +1,7 @@
 package org.apache.nemo.runtime.executor.task;
 
 import org.apache.nemo.offloading.common.DeprecatedOffloadingWorker;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 
 import java.util.concurrent.CompletableFuture;
 

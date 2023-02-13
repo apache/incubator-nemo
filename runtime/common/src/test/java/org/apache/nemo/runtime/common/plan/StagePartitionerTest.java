@@ -27,10 +27,12 @@ import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.executionproperty.*;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
+import org.apache.nemo.conf.EvalConf;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Before;
 import org.junit.Test;
 
+import javax.inject.Inject;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -46,9 +48,16 @@ import static org.junit.Assert.assertNotEquals;
 public final class StagePartitionerTest {
   private StagePartitioner stagePartitioner;
 
+  private final EvalConf evalConf;
+
+  @Inject
+  private StagePartitionerTest(final EvalConf evalConf) {
+    this.evalConf = evalConf;
+  }
+
   @Before
   public void setup() throws InjectionException {
-    stagePartitioner = new StagePartitioner();
+    stagePartitioner = new StagePartitioner(evalConf);
     stagePartitioner.addIgnoredPropertyKey(IgnoreSchedulingTempDataReceiverProperty.class);
   }
 

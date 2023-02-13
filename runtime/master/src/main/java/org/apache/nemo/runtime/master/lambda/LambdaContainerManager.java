@@ -17,7 +17,7 @@ import org.apache.nemo.offloading.client.NettyServerSideChannelHandler;
 import org.apache.nemo.offloading.client.OffloadingEventHandler;
 import org.apache.nemo.offloading.common.*;
 import org.apache.nemo.runtime.common.NettyVMStateStore;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.common.controlmessages.offloading.SendToOffloadingWorker;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutor;
 import org.apache.nemo.runtime.lambdaexecutor.general.OffloadingExecutorSerializer;

@@ -4,7 +4,7 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.TaskState;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
-import org.apache.nemo.runtime.common.comm.ControlMessage;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.message.MessageSender;
 import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;

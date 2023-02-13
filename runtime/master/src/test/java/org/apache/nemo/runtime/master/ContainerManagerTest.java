@@ -20,10 +20,10 @@ package org.apache.nemo.runtime.master;
 
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.JobConf;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
 import org.apache.nemo.runtime.master.resource.ContainerManager;
 import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenterImpl;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
+import org.apache.nemo.runtime.message.MessageEnvironment;
 import org.apache.reef.driver.catalog.NodeDescriptor;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.AllocatedEvaluator;
@@ -76,7 +76,8 @@ public final class ContainerManagerTest {
   public void setUp() throws InjectionException {
 
     final MessageEnvironment mockMsgEnv = mock(MessageEnvironment.class);
-    when(mockMsgEnv.asyncConnect(anyString(), anyString())).thenReturn(mock(Future.class));
+    when(mockMsgEnv.asyncConnect(anyString(), MessageEnvironment.ListenerType.valueOf(anyString())))
+      .thenReturn(mock(Future.class));
     final Configuration configuration = Tang.Factory.getTang().newConfigurationBuilder()
         .bindNamedParameter(JobConf.ScheduleSerThread.class, "1")
         .build();
@@ -110,7 +111,8 @@ public final class ContainerManagerTest {
             createMockEvaluator(evaluatorId, descriptor),
             createMockConfiguration());
         final DefaultExecutorRepresenterImpl executorRepresenter =
-            containerManager.onContainerLaunched(createMockContext(executorId, descriptor)).get();
+          (DefaultExecutorRepresenterImpl) containerManager
+            .onContainerLaunched(createMockContext(executorId, descriptor)).get();
         assertEquals(spec.getContainerType(), executorRepresenter.getContainerType());
         assertEquals(spec.getCapacity(), executorRepresenter.getExecutorCapacity());
         assertEquals(descriptor.getNodeDescriptor().getName(), executorRepresenter.getNodeName());
