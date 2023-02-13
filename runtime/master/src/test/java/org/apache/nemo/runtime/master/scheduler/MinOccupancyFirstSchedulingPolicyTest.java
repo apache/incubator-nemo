@@ -19,7 +19,8 @@
 package org.apache.nemo.runtime.master.scheduler;
 
 import org.apache.nemo.common.Task;
-import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenterImpl;
+import org.apache.nemo.runtime.master.DefaultExecutorRepresenterImpl;
+import org.apache.nemo.runtime.master.ExecutorRepresenter;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.Test;
@@ -64,7 +65,7 @@ public final class MinOccupancyFirstSchedulingPolicyTest {
 
     final Task task = mock(Task.class);
 
-    final List<DefaultExecutorRepresenterImpl> executorRepresenterList = Arrays.asList(a0, a1, a2);
+    final List<ExecutorRepresenter> executorRepresenterList = Arrays.asList(a0, a1, a2);
 
     assertEquals(a0, schedulingPolicy.selectExecutor(executorRepresenterList, task));
   }

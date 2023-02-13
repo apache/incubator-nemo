@@ -155,6 +155,10 @@ public final class TaskScheduledMapMaster {
     });
   }
 
+  public Future<String> stopTask(final String parent) {
+    return stopTask(parent, "");
+  }
+
   public Future<String> stopTask(final String parent, final String resourcePriorityProperty) {
 
     final String executorId = taskExecutorIdMap.get(parent);

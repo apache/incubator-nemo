@@ -20,8 +20,8 @@ package org.apache.nemo.examples.beam;
 
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.*;
+import org.apache.beam.sdk.io.hadoop.format.HadoopFormatIO;
 import org.apache.beam.sdk.transforms.*;
-import org.apache.beam.sdk.io.hadoop.inputformat.HadoopInputFormatIO;
 import org.apache.beam.sdk.values.*;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.LongWritable;
@@ -65,7 +65,7 @@ final class GenericSourceSink {
       hadoopConf.setClass("value.class", Text.class, Object.class);
 
       // Without translations, Beam internally does some weird cloning
-      final HadoopInputFormatIO.Read<Long, String> read = HadoopInputFormatIO.<Long, String>read()
+      final HadoopFormatIO.Read<Long, String> read = HadoopFormatIO.<Long, String>read()
           .withConfiguration(hadoopConf)
           .withKeyTranslation(new SimpleFunction<LongWritable, Long>() {
             @Override

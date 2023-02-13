@@ -19,13 +19,13 @@
 package org.apache.nemo.runtime.master.scheduler;
 
 import org.apache.nemo.common.Task;
+import org.apache.nemo.runtime.master.DefaultExecutorRepresenterImpl;
 import org.apache.nemo.runtime.master.ExecutorRepresenter;
 import net.jcip.annotations.ThreadSafe;
 import org.apache.reef.annotations.audience.DriverSide;
 import org.apache.reef.tang.annotations.DefaultImplementation;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Set;
 
 /**

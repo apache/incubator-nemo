@@ -37,7 +37,6 @@ import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Watermark;
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.common.ir.edge.Stage;
 import org.apache.nemo.common.Task;
 import org.apache.nemo.common.ir.edge.StageEdge;
@@ -50,6 +49,7 @@ import org.apache.nemo.runtime.executor.data.BroadcastManagerWorker;
 import org.apache.nemo.runtime.executor.common.datatransfer.IntermediateDataIOFactory;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.apache.nemo.runtime.executor.common.datatransfer.OutputWriter;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -93,6 +93,7 @@ public final class TaskExecutorTest {
   private MetricMessageSender metricMessageSender;
   private PersistentConnectionToMasterMap persistentConnectionToMasterMap;
   private AtomicInteger stageId;
+  private DAG dag = mock(DAG.class);
 
   private String generateTaskId() {
     return RuntimeIdManager.generateTaskId(
@@ -174,13 +175,15 @@ public final class TaskExecutorTest {
     final StageEdge taskOutEdge = mockStageEdgeFrom(operatorVertex);
     final Task task =
       new Task(
-        "testSourceVertexDataFetching",
-        generateTaskId(),
+        "testSourceVertexDataFetching" + generateTaskId(),
         TASK_EXECUTION_PROPERTY_MAP,
-        new byte[0],
+        dag,
         Collections.emptyList(),
         Collections.singletonList(taskOutEdge),
-        vertexIdToReadable);
+        vertexIdToReadable,
+        Collections.emptyList(),
+        Task.TaskType.DefaultTask,
+        Collections.emptySet());
 
     // Execute the task.
     final TaskExecutor taskExecutor = getTaskExecutor(task, taskDag);
@@ -206,13 +209,15 @@ public final class TaskExecutorTest {
 
     final StageEdge taskOutEdge = mockStageEdgeFrom(vertex);
     final Task task = new Task(
-        "testSourceVertexDataFetching",
-        generateTaskId(),
-        TASK_EXECUTION_PROPERTY_MAP,
-        new byte[0],
-        Collections.singletonList(mockStageEdgeTo(vertex)),
-        Collections.singletonList(taskOutEdge),
-        Collections.emptyMap());
+      "testSourceVertexDataFetching" + generateTaskId(),
+      TASK_EXECUTION_PROPERTY_MAP,
+      dag,
+      Collections.singletonList(mockStageEdgeTo(vertex)),
+      Collections.singletonList(taskOutEdge),
+      Collections.emptyMap(),
+      Collections.emptyList(),
+      Task.TaskType.DefaultTask,
+      Collections.emptySet());
 
     // Execute the task.
     final TaskExecutor taskExecutor = getTaskExecutor(task, taskDag);
@@ -282,13 +287,15 @@ public final class TaskExecutorTest {
     final StageEdge taskOutEdge = mockStageEdgeFrom(operatorIRVertex2);
     final Task task =
       new Task(
-        "testSourceVertexDataFetching",
-        generateTaskId(),
+        "testSourceVertexDataFetching" + generateTaskId(),
         TASK_EXECUTION_PROPERTY_MAP,
-        new byte[0],
+        dag,
         Collections.emptyList(),
         Collections.singletonList(taskOutEdge),
-        vertexIdToReadable);
+        vertexIdToReadable,
+        Collections.emptyList(),
+        Task.TaskType.DefaultTask,
+        Collections.emptySet());
 
     // Execute the task.
     final Thread watermarkEmitThread = new Thread(new Runnable() {
@@ -346,13 +353,15 @@ public final class TaskExecutorTest {
 
     final StageEdge taskOutEdge = mockStageEdgeFrom(operatorIRVertex2);
     final Task task = new Task(
-        "testSourceVertexDataFetching",
-        generateTaskId(),
-        TASK_EXECUTION_PROPERTY_MAP,
-        new byte[0],
-        Collections.singletonList(mockStageEdgeTo(operatorIRVertex1)),
-        Collections.singletonList(taskOutEdge),
-        Collections.emptyMap());
+        "testSourceVertexDataFetching" + generateTaskId(),
+      TASK_EXECUTION_PROPERTY_MAP,
+      dag,
+      Collections.singletonList(mockStageEdgeTo(operatorIRVertex1)),
+      Collections.singletonList(taskOutEdge),
+      Collections.emptyMap(),
+      Collections.emptyList(),
+      Task.TaskType.DefaultTask,
+      Collections.emptySet());
 
     // Execute the task.
     final TaskExecutor taskExecutor = getTaskExecutor(task, taskDag);
@@ -383,13 +392,15 @@ public final class TaskExecutorTest {
     when(broadcastManagerWorker.get(broadcastId)).thenReturn(new ArrayList<>(elements));
 
     final Task task = new Task(
-        "testSourceVertexDataFetching",
-        generateTaskId(),
-        TASK_EXECUTION_PROPERTY_MAP,
-        new byte[0],
-        Collections.singletonList(taskInEdge),
-        Collections.singletonList(taskOutEdge),
-        Collections.emptyMap());
+        "testSourceVertexDataFetching" + generateTaskId(),
+      TASK_EXECUTION_PROPERTY_MAP,
+      dag,
+      Collections.singletonList(taskInEdge),
+      Collections.singletonList(taskOutEdge),
+      Collections.emptyMap(),
+      Collections.emptyList(),
+      Task.TaskType.DefaultTask,
+      Collections.emptySet());
 
     // Execute the task.
     final TaskExecutor taskExecutor = getTaskExecutor(task, taskDag);
@@ -444,13 +455,15 @@ public final class TaskExecutorTest {
     final StageEdge outEdge3 = mockStageEdgeFrom(bonusVertex2);
 
     final Task task = new Task(
-        "testAdditionalOutputs",
-        generateTaskId(),
-        TASK_EXECUTION_PROPERTY_MAP,
-        new byte[0],
-        Collections.singletonList(mockStageEdgeTo(routerVertex)),
-        Arrays.asList(outEdge1, outEdge2, outEdge3),
-        Collections.emptyMap());
+        "testAdditionalOutputs" + generateTaskId(),
+      TASK_EXECUTION_PROPERTY_MAP,
+      dag,
+      Collections.singletonList(mockStageEdgeTo(routerVertex)),
+      Arrays.asList(outEdge1, outEdge2, outEdge3),
+      Collections.emptyMap(),
+      Collections.emptyList(),
+      Task.TaskType.DefaultTask,
+      Collections.emptySet());
 
     // Execute the task.
     final TaskExecutor taskExecutor = getTaskExecutor(task, taskDag);

@@ -24,8 +24,6 @@ import org.apache.nemo.common.TaskState;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.runtime.master.*;
 import org.apache.commons.lang3.mutable.MutableObject;
-import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenterImpl;
-import org.apache.nemo.runtime.master.vmscaling.VMScalingAddresses;
 import org.apache.reef.annotations.audience.DriverSide;
 
 import java.util.*;

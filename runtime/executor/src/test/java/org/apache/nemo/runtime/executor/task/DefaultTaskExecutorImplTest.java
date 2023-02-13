@@ -46,7 +46,6 @@ import org.apache.nemo.compiler.frontend.beam.transform.FlattenTransform;
 import org.apache.nemo.conf.EvalConf;
 import org.apache.nemo.offloading.common.ServerlessExecutorProvider;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.executor.*;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
@@ -63,6 +62,7 @@ import org.apache.nemo.common.test.EventOrWatermark;
 import org.apache.nemo.runtime.executor.task.util.StreamTransformNoEmit;
 import org.apache.nemo.common.test.TestUnboundedSourceReadable;
 import org.apache.nemo.common.test.TestUnboundedSourceVertex;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;
@@ -102,6 +102,7 @@ public final class DefaultTaskExecutorImplTest {
 
   private Map<String, List> runtimeEdgeToOutputData;
   private AtomicInteger stageId;
+  private DAG dag = mock(DAG.class);
 
   private final Tang TANG = Tang.Factory.getTang();
 
@@ -159,6 +160,11 @@ public final class DefaultTaskExecutorImplTest {
       @Override
       public void close() {
 
+      }
+
+      @Override
+      public int getPort() {
+        return 0;
       }
     };
 
@@ -317,23 +323,27 @@ public final class DefaultTaskExecutorImplTest {
 
      final Task task1 =
       new Task(
-        "testSourceVertexDataFetching",
-        task1Id,
+        "testSourceVertexDataFetching" + task1Id,
         TASK_EXECUTION_PROPERTY_MAP,
-        new byte[0],
+        dag,
         Collections.emptyList(),
         Collections.singletonList(s1ToS2),
-        vertexIdToReadable1);
+        vertexIdToReadable1,
+        Collections.emptyList(),
+        Task.TaskType.DefaultTask,
+        Collections.emptySet());
 
      final Task task2 =
       new Task(
-        "task2plan",
-        task2Id,
+        "task2plan" + task2Id,
         TASK_EXECUTION_PROPERTY_MAP,
-        new byte[0],
+        dag,
         Collections.singletonList(s1ToS2),
         Collections.emptyList(),
-        new HashMap<>());
+        Collections.emptyMap(),
+        Collections.emptyList(),
+        Task.TaskType.DefaultTask,
+        Collections.emptySet());
 
 
     // Execute the task.
@@ -451,13 +461,15 @@ public final class DefaultTaskExecutorImplTest {
 
     final Task task1 =
       new Task(
-        "testSourceVertexDataFetching",
-        RuntimeIdManager.generateTaskId(stage1Id, 0, 0),
+        "testSourceVertexDataFetching" + RuntimeIdManager.generateTaskId(stage1Id, 0, 0),
         TASK_EXECUTION_PROPERTY_MAP,
-        new byte[0],
+        dag,
         Collections.emptyList(),
         Collections.emptyList(),
-        vertexIdToReadable);
+        vertexIdToReadable,
+        Collections.emptyList(),
+        Task.TaskType.DefaultTask,
+        Collections.emptySet());
 
     // Execute the task.
     final TaskExecutor taskExecutor = getTaskExecutor(0, "executor1", task1, taskDag, Collections.emptyList()).left();

@@ -1,10 +1,13 @@
 package org.apache.nemo.runtime.executor;
 
+import org.apache.commons.lang3.tuple.Triple;
+import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputPipeRegister;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.function.Function;
 
 public final class ControlEventHandlerTest {
 
@@ -16,7 +19,7 @@ public final class ControlEventHandlerTest {
   final class TestInputPipeRegister implements InputPipeRegister {
 
     @Override
-    public void retrieveIndexForOffloadingSource(String srcTaskId, String edgeId) {
+    public void sendPipeInitMessage(String srcTaskId, String edgeId, String dstTaskId) {
 
     }
 
@@ -26,7 +29,12 @@ public final class ControlEventHandlerTest {
     }
 
     @Override
-    public void sendSignalForInputPipes(List<String> srcTasks, String edgeId, String dstTaskId) {
+    public void sendStopSignalForInputPipes(List<String> srcTasks, String edgeId, String dstTaskId, Function<Triple<Integer, Integer, String>, TaskControlMessage> messageBuilder) {
+
+    }
+
+    @Override
+    public void sendSignalForInputPipes(List<String> srcTasks, String edgeId, String dstTaskId, Function<Triple<Integer, Integer, String>, TaskControlMessage> messageBuilder) {
 
     }
 

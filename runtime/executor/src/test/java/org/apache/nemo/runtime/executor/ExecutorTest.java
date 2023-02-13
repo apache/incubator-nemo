@@ -32,7 +32,6 @@ import org.apache.nemo.common.test.EventOrWatermark;
 import org.apache.nemo.common.test.TestUnboundedSourceReadable;
 import org.apache.nemo.common.test.TestUnboundedSourceVertex;
 import org.apache.nemo.runtime.executor.common.TaskOffloadingEvent;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.common.plan.PhysicalPlan;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.datatransfer.InputReader;
@@ -47,6 +46,7 @@ import org.apache.nemo.runtime.executor.task.TestDAGBuilder;
 import org.apache.nemo.runtime.executor.task.util.*;
 import org.apache.nemo.runtime.master.RuntimeMaster;
 import org.apache.nemo.runtime.master.resource.ResourceSpecification;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.reef.driver.catalog.NodeDescriptor;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.driver.evaluator.EvaluatorDescriptor;
@@ -152,6 +152,11 @@ public final class ExecutorTest {
       @Override
       public void close() {
 
+      }
+
+      @Override
+      public int getPort() {
+        return 0;
       }
     };
   }

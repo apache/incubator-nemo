@@ -18,9 +18,9 @@
  */
 package org.apache.nemo.runtime.master.resource;
 
-import org.apache.nemo.common.exception.ContainerException;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
 import org.apache.nemo.conf.JobConf;
+import org.apache.nemo.runtime.master.DefaultExecutorRepresenterImpl;
 import org.apache.nemo.runtime.master.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.SerializedTaskMap;
 import org.apache.nemo.runtime.message.FailedMessageSender;

@@ -24,7 +24,7 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ResourceAntiAffinityPr
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.ir.edge.Stage;
 import org.apache.nemo.common.Task;
-import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenterImpl;
+import org.apache.nemo.runtime.master.DefaultExecutorRepresenterImpl;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;

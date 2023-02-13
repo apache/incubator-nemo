@@ -26,7 +26,7 @@ import org.apache.nemo.common.ir.edge.executionproperty.CompressionProperty;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.KeyRange;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageEnvironment;
 import org.apache.nemo.runtime.message.local.LocalMessageDispatcher;
 import org.apache.nemo.runtime.message.local.LocalMessageEnvironment;
 import org.apache.nemo.runtime.common.state.BlockState;
@@ -113,7 +113,7 @@ public final class BlockStoreTest {
   public void setUp() throws Exception {
     baseInjector = LocalMessageDispatcher.getInjector();
     final Injector injector = LocalMessageEnvironment
-        .forkInjector(baseInjector, MessageEnvironment.MASTER_COMMUNICATION_ID);
+        .forkInjector(baseInjector, MessageEnvironment.MASTER_ID);
     blockManagerMaster = injector.getInstance(BlockManagerMaster.class);
     when(serializerManager.getSerializer(any())).thenReturn(SERIALIZER);
 

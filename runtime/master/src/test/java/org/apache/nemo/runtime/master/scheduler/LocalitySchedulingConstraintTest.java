@@ -22,7 +22,7 @@ import org.apache.nemo.common.ir.vertex.executionproperty.ResourceLocalityProper
 import org.apache.nemo.common.Task;
 import org.apache.nemo.common.ir.Readable;
 import org.apache.nemo.runtime.master.BlockManagerMaster;
-import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenterImpl;
+import org.apache.nemo.runtime.master.DefaultExecutorRepresenterImpl;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.apache.reef.tang.exceptions.InjectionException;

@@ -130,7 +130,7 @@ public class PipeManagerTestHelper {
       .bindImplementation(SerializerManager.class, DefaultSerializerManagerImpl.class)
       .bindImplementation(IntermediateDataIOFactory.class, DefaltIntermediateDataIOFactoryImpl.class)
       .bindImplementation(OffloadingWorkerFactory.class, DefaultOffloadingWorkerFactory.class)
-      .bindImplementation(OffloadingRequesterFactory.class, LocalExecutorOffloadingRequesterFactory.class) // todo: fix
+      // .bindImplementation(OffloadingRequesterFactory.class, LocalExecutorOffloadingRequesterFactory.class) // todo: fix
       .bindImplementation(OutputCollectorGenerator.class, DefaultOutputCollectorGeneratorImpl.class)
       .bindImplementation(OffloadingManager.class, offloadingManager)
       .bindNamedParameter(EvalConf.ThrottleRate.class, Long.toString(offloadingThrottleRate))

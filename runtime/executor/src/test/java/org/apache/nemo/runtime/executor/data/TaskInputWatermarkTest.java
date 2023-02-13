@@ -18,7 +18,7 @@ public final class TaskInputWatermarkTest {
 
   @Test
   public void testTaskInputWatermark() {
-    final TaskInputWatermarkManager watermarkManager = new TaskInputWatermarkManager();
+    final TaskInputWatermarkManager watermarkManager = new TaskInputWatermarkManager("");
 
     final DataFetcher d1 = mock(DataFetcher.class);
     when(d1.getEdgeId()).thenReturn("d1");

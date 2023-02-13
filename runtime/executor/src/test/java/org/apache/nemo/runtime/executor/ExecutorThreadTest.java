@@ -7,6 +7,10 @@ import org.apache.nemo.common.coder.IntEncoderFactory;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
 import org.apache.nemo.runtime.executor.common.*;
 import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessage;
+import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
+import org.apache.nemo.runtime.message.MessageSender;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.junit.Test;
 
 import java.util.*;
@@ -21,11 +25,20 @@ public final class ExecutorThreadTest {
   private final Serializer serializer = new Serializer(IntEncoderFactory.of(), IntDecoderFactory.of(),
     Collections.emptyList(), Collections.emptyList());
 
+  private final PersistentConnectionToMasterMap persistentConnectionToMasterMap =
+    mock(PersistentConnectionToMasterMap.class);
+  private final MetricMessageSender metricMessageSender = mock(MetricMessageSender.class);
+  private final MessageSender<ControlMessage.Message> taskScheduledMapSender = mock(MessageSender.class);
+  private final TaskExecutorMapWrapper taskExecutorMapWrapper = mock(TaskExecutorMapWrapper.class);
+  private final TaskScheduledMapWorker taskScheduledMapWorker = mock(TaskScheduledMapWorker.class);
+
   @Test
   public void testExecutorThread() throws InterruptedException {
     final ExecutorThread executorThread = new ExecutorThread(0,
       "executor1", controlEventHandler, Long.MAX_VALUE, new ExecutorMetrics(),
-      false);
+      persistentConnectionToMasterMap, metricMessageSender,
+      taskScheduledMapSender, taskExecutorMapWrapper,
+      taskScheduledMapWorker, false);
 
     final List<Object> input = new LinkedList<>();
     input.addAll(Arrays.asList(0, 1, 2, 3, 4, 5));
@@ -33,7 +46,7 @@ public final class ExecutorThreadTest {
     final ExecutorThreadTask src1 = new TestExecutorThreadSourceTask("t1", input);
 
     // handle source task test
-    executorThread.addNewTask(src1);
+    executorThread.addNewTask((TaskExecutor) src1);
     executorThread.start();
 
     Thread.sleep(1000);
@@ -43,13 +56,13 @@ public final class ExecutorThreadTest {
     final List<Object> input2 = new LinkedList<>();
     input2.addAll(Arrays.asList(0, 1, 2, 3, 4, 5));
     final ExecutorThreadTask src2 = new TestExecutorThreadSourceTask("t2", input2);
-    executorThread.addNewTask(src2);
+    executorThread.addNewTask((TaskExecutor) src2);
     Thread.sleep(1000);
     assertTrue(input2.isEmpty());
 
     // handle intermediate task test
     final ExecutorThreadTask inter1 = new TestExecutorThreadIntermediateTask("t3");
-    executorThread.addNewTask(inter1);
+    executorThread.addNewTask((TaskExecutor) inter1);
 
     final DataFetcher d1 = mock(DataFetcher.class);
     when(d1.getEdgeId()).thenReturn("d1");
@@ -64,10 +77,10 @@ public final class ExecutorThreadTest {
       } else {
         executorThread.addEvent(new TaskHandlingDataEvent("t3", d1.getEdgeId(),
           0,
-          ByteBufAllocator.DEFAULT.buffer().writeInt(i), serializer));
+          ByteBufAllocator.DEFAULT.buffer().writeInt(i), serializer.getDecoderFactory()));
         executorThread.addEvent(new TaskHandlingDataEvent("t3", d2.getEdgeId(),
           0,
-          ByteBufAllocator.DEFAULT.buffer().writeInt(i), serializer));
+          ByteBufAllocator.DEFAULT.buffer().writeInt(i), serializer.getDecoderFactory()));
       }
     }
 

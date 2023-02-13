@@ -35,9 +35,9 @@ import org.apache.nemo.common.test.EmptyComponents;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.runtime.common.message.MessageEnvironment;
-import org.apache.nemo.runtime.common.message.MessageParameters;
-import org.apache.nemo.runtime.common.message.PersistentConnectionToMasterMap;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageParameters;
+import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
 import org.apache.nemo.runtime.message.local.LocalMessageDispatcher;
 import org.apache.nemo.runtime.message.local.LocalMessageEnvironment;
 import org.apache.nemo.runtime.common.plan.PlanRewriter;
@@ -136,7 +136,7 @@ public final class DataTransferTest {
     baseInjector.bindVolatileInstance(EvaluatorRequestor.class, mock(EvaluatorRequestor.class));
     final Injector dispatcherInjector = LocalMessageDispatcher.forkInjector(baseInjector);
     final Injector injector = LocalMessageEnvironment.forkInjector(dispatcherInjector,
-        MessageEnvironment.MASTER_COMMUNICATION_ID);
+        MessageEnvironment.MASTER_ID);
 
     final PlanRewriter planRewriter = mock(PlanRewriter.class);
     injector.bindVolatileInstance(PlanRewriter.class, planRewriter);

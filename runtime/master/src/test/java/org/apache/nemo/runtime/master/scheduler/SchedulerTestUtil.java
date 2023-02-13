@@ -21,8 +21,9 @@ package org.apache.nemo.runtime.master.scheduler;
 import org.apache.nemo.common.ir.edge.Stage;
 import org.apache.nemo.runtime.common.state.StageState;
 import org.apache.nemo.common.TaskState;
+import org.apache.nemo.runtime.master.ExecutorRepresenter;
 import org.apache.nemo.runtime.master.PlanStateManager;
-import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenterImpl;
+import org.apache.nemo.runtime.master.DefaultExecutorRepresenterImpl;
 
 import java.util.Optional;
 
@@ -83,9 +84,9 @@ final class SchedulerTestUtil {
                                             final TaskState.RecoverableTaskFailureCause cause) {
     final DefaultExecutorRepresenterImpl scheduledExecutor;
     while (true) {
-      final Optional<DefaultExecutorRepresenterImpl> optional = executorRegistry.findExecutorForTask(taskId);
+      final Optional<ExecutorRepresenter> optional = executorRegistry.findExecutorForTask(taskId);
       if (optional.isPresent()) {
-        scheduledExecutor = optional.get();
+        scheduledExecutor = (DefaultExecutorRepresenterImpl) optional.get();
         break;
       }
     }

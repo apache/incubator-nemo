@@ -296,7 +296,7 @@ public final class PipeManagerWorkerTest {
     // STOP AND RESTART TASKS
     // send stop signal
     pipeManagerWorker2.sendStopSignalForInputPipes(
-      Arrays.asList(task1, task2), edge1, task3);
+      Arrays.asList(task1, task2), edge1, task3, null);
     pipeManagerWorker2.flush();
 
     Thread.sleep(1000);

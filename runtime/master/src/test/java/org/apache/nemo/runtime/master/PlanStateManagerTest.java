@@ -56,7 +56,7 @@ public final class PlanStateManagerTest {
   @Before
   public void setUp() throws Exception {
     final Injector injector = LocalMessageEnvironment.forkInjector(LocalMessageDispatcher.getInjector(),
-        MessageEnvironment.MASTER_COMMUNICATION_ID);
+        MessageEnvironment.MASTER_ID);
     metricMessageHandler = mock(MetricMessageHandler.class);
     injector.bindVolatileInstance(MetricMessageHandler.class, metricMessageHandler);
     injector.bindVolatileParameter(JobConf.DAGDirectory.class, "");

@@ -18,9 +18,13 @@
  */
 package org.apache.nemo.runtime.executor;
 
+import org.apache.nemo.runtime.message.MessageContext;
+import org.apache.nemo.runtime.message.MessageEnvironment;
+import org.apache.nemo.runtime.message.MessageListener;
+import org.apache.nemo.runtime.message.MessageSender;
 import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.common.MetricManagerWorker;
-import org.apache.nemo.runtime.master.resource.DefaultExecutorRepresenterImpl;
+import org.apache.nemo.runtime.master.DefaultExecutorRepresenterImpl;
 import org.apache.nemo.runtime.message.local.LocalMessageDispatcher;
 import org.apache.nemo.runtime.message.local.LocalMessageEnvironment;
 import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
@@ -66,7 +70,7 @@ public final class MetricFlushTest {
     final MessageEnvironment workerMessageEnvironment = workerInjector.getInstance(MessageEnvironment.class);
 
     final MessageSender masterToWorkerSender = masterMessageEnvironment
-        .asyncConnect(WORKER, MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID).get();
+        .asyncConnect(WORKER, MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID).get();
 
     final Set<DefaultExecutorRepresenterImpl> executorRepresenterSet = new HashSet<>();
 
@@ -86,7 +90,7 @@ public final class MetricFlushTest {
     final MetricManagerMaster metricManagerMaster = masterInjector.getInstance(MetricManagerMaster.class);
     final MetricManagerWorker metricManagerWorker = workerInjector.getInstance(MetricManagerWorker.class);
 
-    masterMessageEnvironment.setupListener(MessageEnvironment.RUNTIME_MASTER_MESSAGE_LISTENER_ID,
+    masterMessageEnvironment.setupListener(MessageEnvironment.ListenerType.RUNTIME_MASTER_MESSAGE_LISTENER_ID,
         new MessageListener<Object>() {
         @Override
         public void onMessage(Object message) {
@@ -98,7 +102,7 @@ public final class MetricFlushTest {
         }
     });
 
-    workerMessageEnvironment.setupListener(MessageEnvironment.EXECUTOR_MESSAGE_LISTENER_ID,
+    workerMessageEnvironment.setupListener(MessageEnvironment.ListenerType.EXECUTOR_MESSAGE_LISTENER_ID,
         new MessageListener<Object>() {
           @Override
           public void onMessage(Object message) {
