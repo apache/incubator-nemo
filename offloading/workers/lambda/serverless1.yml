@@ -5,8 +5,7 @@ provider:
   runtime: java11
   profile: default
   region: ap-northeast-1
-  memorySize: 3072 # Overwrite the default memory size. Default is 1024
-  timeout: 100
+  timeout: 600
   role: arn:aws:iam::835596193924:role/nemo-dev-ap-northeast-1-lambdaRole
   snapStart: true
   layers:
@@ -17,7 +16,3 @@ provider:
     subnetIds:
       - subnet-5bcae603
 
-package:
-  artifact: build/distributions/lambda.zip
-
-functions:

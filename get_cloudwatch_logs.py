@@ -23,12 +23,12 @@ num_lambda = int(sys.argv[4])
 session = boto3.Session(profile_name = profile, region_name = "ap-northeast-1")
 client = session.client('logs')
 
-log_group = "/aws/lambda/nemo-dev-lambda-executor"
+log_group = "/aws/lambda/lambda-dev-lambda-executor"
 
 
 start_time = int(sys.argv[2]) * 1000
 end_time = int(sys.argv[3]) * 1000
-delete = True if sys.argv[4] == "true" else False
+delete = True if sys.argv[5] == "true" else False
 
 def get_log_streams(log_streams, group_name):
     def get_log_stream(log_stream):
@@ -90,8 +90,8 @@ def get_log_streams(log_streams, group_name):
     for log_stream in log_streams:
         get_log_stream(log_stream)
         if delete:
-            client.delete_log_stream(logGroupName = log_group, 
-                    logStreamName = log_stream["logStreamName"])
+            client.delete_log_stream(logGroupName = group_name, 
+                    logStreamName = log_stream['logStreamName'])
 
 
 prev_token = None 

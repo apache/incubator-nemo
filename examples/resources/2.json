@@ -1,12 +1,18 @@
 [
-  {
-    "type": "Reserved",
-    "memory_mb": 30000,
-    "capacity": 100
-  },
-  {
-    "type": "Reserved",
-    "memory_mb": 30000,
-    "capacity": 100
-  }
+		{
+		"type": "Source",
+		"memory_mb": 20000,
+		"capacity": 20,
+		"slot": 300,
+		"num": 3
+		},
+		{
+			"type": "Compute",
+			"memory_mb": 29000,
+			"capacity": 1,
+			"slot": 500,
+			"num": 10
+		}
+
 ]
+

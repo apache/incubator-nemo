@@ -42,11 +42,17 @@ print("Zip file uploaded to S3")
 
 
 num_lambda = int(sys.argv[1])
+mem_size = int(sys.argv[2])
 name="lambda-dev-11-lambda-executor"
 
-for i in range(1,num_lambda + 1):
-    print("Creating ", name + str(i))
-    # client.delete_function(FunctionName=name + str(i))
+
+def create_func(i):
+    print("Creating ", name + str(i), "mem ", mem_size)
+    try:
+        client.delete_function(FunctionName=name + str(i))
+    except:
+        print("no function to delete ", name + str(i))
+
     response = client.create_function(
             FunctionName=name + str(i),
             Runtime="java11",
@@ -60,7 +66,7 @@ for i in range(1,num_lambda + 1):
                 "S3Key": BUCKET_KEY
                 },
             Timeout=600,
-            MemorySize=1500,
+            MemorySize=mem_size,
             Publish=True,
             VpcConfig={
                 'SubnetIds': [
@@ -74,3 +80,21 @@ for i in range(1,num_lambda + 1):
             )
     print(response)
     time.sleep(6)
+
+
+from concurrent.futures import ThreadPoolExecutor
+from time import sleep
+executor = ThreadPoolExecutor(12)
+
+futures = []
+for i in range(1,num_lambda + 1):
+    futures.append(executor.submit(create_func, (i)))
+
+index = 1
+for future in futures:
+    while not future.done():
+        print("Waiting for creation of function ", index)
+        sleep(1)
+    print("End of creation of function ", index)
+    index += 1
+
