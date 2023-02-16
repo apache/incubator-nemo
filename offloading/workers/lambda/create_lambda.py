@@ -1,5 +1,5 @@
 import boto3
-import os
+import os, time
 import zipfile
 from botocore.config import Config
 import sys
@@ -42,15 +42,18 @@ print("Zip file uploaded to S3")
 
 
 num_lambda = int(sys.argv[1])
-name="lambda-dev-lambda-executor"
+name="lambda-dev-11-lambda-executor"
 
 for i in range(1,num_lambda + 1):
     print("Creating ", name + str(i))
-    client.delete_function(FunctionName=name + str(i))
+    # client.delete_function(FunctionName=name + str(i))
     response = client.create_function(
             FunctionName=name + str(i),
-            Runtime="java8",
+            Runtime="java11",
             Role="arn:aws:iam::835596193924:role/nemo-dev-ap-northeast-1-lambdaRole",
+            SnapStart={
+                'ApplyOn': 'PublishedVersions'
+            },
             Handler="org.apache.nemo.runtime.lambdaexecutor.LambdaWorker",
             Code={
                 "S3Bucket": BUCKET_NAME,
@@ -69,3 +72,5 @@ for i in range(1,num_lambda + 1):
                 },
             Layers=["arn:aws:lambda:ap-northeast-1:835596193924:layer:sponge-layer:1"],
             )
+    print(response)
+    time.sleep(6)

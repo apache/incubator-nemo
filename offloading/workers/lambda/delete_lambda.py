@@ -15,8 +15,8 @@ BUCKET_NAME="nemo-lambda"
 
 
 num_lambda = int(sys.argv[1])
-name="nemo-dev-lambda-executor"
+name="nemo-dev-11-lambda-executor"
 
 for i in range(1,num_lambda + 1):
-    print("Creating ", name + str(i))
+    print("Deleting ", name + str(i))
     client.delete_function(FunctionName=name + str(i))
