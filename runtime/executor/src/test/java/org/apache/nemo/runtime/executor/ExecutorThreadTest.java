@@ -10,7 +10,6 @@ import org.apache.nemo.runtime.executor.common.controlmessages.TaskControlMessag
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.message.MessageSender;
 import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
-import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.junit.Test;
 
 import java.util.*;
@@ -28,7 +27,7 @@ public final class ExecutorThreadTest {
   private final PersistentConnectionToMasterMap persistentConnectionToMasterMap =
     mock(PersistentConnectionToMasterMap.class);
   private final MetricMessageSender metricMessageSender = mock(MetricMessageSender.class);
-  private final MessageSender<ControlMessage.Message> taskScheduledMapSender = mock(MessageSender.class);
+  private final MessageSender<org.apache.nemo.runtime.message.comm.ControlMessage.Message> taskScheduledMapSender = mock(MessageSender.class);
   private final TaskExecutorMapWrapper taskExecutorMapWrapper = mock(TaskExecutorMapWrapper.class);
   private final TaskScheduledMapWorker taskScheduledMapWorker = mock(TaskScheduledMapWorker.class);
 

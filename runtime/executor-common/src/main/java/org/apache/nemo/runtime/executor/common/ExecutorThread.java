@@ -4,10 +4,10 @@ import org.apache.nemo.common.RuntimeIdManager;
 import org.apache.nemo.common.TaskState;
 import org.apache.nemo.common.Util;
 import org.apache.nemo.offloading.common.TaskHandlingEvent;
-import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.executor.common.tasks.TaskExecutor;
 import org.apache.nemo.runtime.message.MessageSender;
 import org.apache.nemo.runtime.message.PersistentConnectionToMasterMap;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,7 +77,7 @@ public final class ExecutorThread implements ExecutorThreadQueue {
                         final ExecutorMetrics executorMetrics,
                         final PersistentConnectionToMasterMap persistentConnectionToMasterMap,
                         final MetricMessageSender metricMessageSender,
-                        final MessageSender<ControlMessage.Message> taskScheduledMapSender,
+                        final MessageSender<org.apache.nemo.runtime.message.comm.ControlMessage.Message> taskScheduledMapSender,
                         final TaskExecutorMapWrapper taskExecutorMapWrapper,
                         final TaskScheduledMapWorker taskScheduledMapWorker,
                         final boolean testing) {
@@ -383,11 +383,11 @@ public final class ExecutorThread implements ExecutorThreadQueue {
           LOG.info("Task message send time {} to {} thread of {}, time {}", t.getId(), index, executorId,
             System.currentTimeMillis() - st);
 
-          taskScheduledMapSender.send(ControlMessage.Message.newBuilder()
+          taskScheduledMapSender.send(org.apache.nemo.runtime.message.comm.ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
             .setListenerId(TASK_SCHEDULE_MAP_LISTENER_ID.ordinal())
-            .setType(ControlMessage.MessageType.TaskExecuting)
-            .setTaskExecutingMsg(ControlMessage.TaskExecutingMessage.newBuilder()
+            .setType(org.apache.nemo.runtime.message.comm.ControlMessage.MessageType.TaskExecuting)
+            .setTaskExecutingMsg(org.apache.nemo.runtime.message.comm.ControlMessage.TaskExecutingMessage.newBuilder()
               .setExecutorId(executorId)
               .setTaskId(t.getId())
               .build())

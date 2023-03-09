@@ -32,6 +32,13 @@ import java.util.concurrent.Future;
 public interface MessageEnvironment {
 
   public final String MASTER_ID = "master";
+  // The ID of the master used for distinguish the sender or receiver.
+  String MASTER_COMMUNICATION_ID = "MASTER";
+  // The globally known message listener IDs.
+  ListenerType RUNTIME_MASTER_MESSAGE_LISTENER_ID = ListenerType.valueOf("RUNTIME_MASTER_MESSAGE_LISTENER_ID");
+  String BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID = "BLOCK_MANAGER_MASTER_MESSAGE_LISTENER_ID";
+  String PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID = "PIPE_MANAGER_MASTER_MESSAGE_LISTENER_ID";
+  ListenerType EXECUTOR_MESSAGE_LISTENER_ID = ListenerType.valueOf("EXECUTOR_MESSAGE_LISTENER_ID");
 
   // The ID of the master used for distinguish the sender or receiver.
   enum ListenerType {

@@ -18,6 +18,11 @@ public final class ControlEventHandlerTest {
 
   final class TestInputPipeRegister implements InputPipeRegister {
 
+    // @Override
+    // public void retrieveIndexForOffloadingSource(String srcTaskId, String edgeId) {
+
+    // }
+
     @Override
     public void sendPipeInitMessage(String srcTaskId, String edgeId, String dstTaskId) {
 
@@ -29,14 +34,21 @@ public final class ControlEventHandlerTest {
     }
 
     @Override
-    public void sendStopSignalForInputPipes(List<String> srcTasks, String edgeId, String dstTaskId, Function<Triple<Integer, Integer, String>, TaskControlMessage> messageBuilder) {
-
+    public void sendStopSignalForInputPipes(List<String> srcTasks, String edgeId, String dstTaskId,
+                                            Function<Triple<Integer, Integer, String>, TaskControlMessage>
+                                              messageBuilder) {
     }
 
     @Override
-    public void sendSignalForInputPipes(List<String> srcTasks, String edgeId, String dstTaskId, Function<Triple<Integer, Integer, String>, TaskControlMessage> messageBuilder) {
+    public void sendSignalForInputPipes(List<String> srcTasks, String edgeId, String dstTaskId,
+                                        Function<Triple<Integer, Integer, String>, TaskControlMessage> messageBuilder) {
 
     }
+
+    // @Override
+    // public void sendSignalForInputPipes(List<String> srcTasks, String edgeId, String dstTaskId) {
+
+    // }
 
     @Override
     public void receiveAckInputStopSignal(String taskId, int pipeIndex) {

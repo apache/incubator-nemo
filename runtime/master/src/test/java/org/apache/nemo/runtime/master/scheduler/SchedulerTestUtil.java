@@ -82,7 +82,7 @@ final class SchedulerTestUtil {
                                             final TaskState.State newState,
                                             final int attemptIdx,
                                             final TaskState.RecoverableTaskFailureCause cause) {
-    final DefaultExecutorRepresenterImpl scheduledExecutor;
+    final ExecutorRepresenter scheduledExecutor;
     while (true) {
       final Optional<ExecutorRepresenter> optional = executorRegistry.findExecutorForTask(taskId);
       if (optional.isPresent()) {

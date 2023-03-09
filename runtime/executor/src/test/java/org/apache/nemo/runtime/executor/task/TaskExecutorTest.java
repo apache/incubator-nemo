@@ -353,7 +353,7 @@ public final class TaskExecutorTest {
 
     final StageEdge taskOutEdge = mockStageEdgeFrom(operatorIRVertex2);
     final Task task = new Task(
-        "testSourceVertexDataFetching" + generateTaskId(),
+      "testSourceVertexDataFetching" + generateTaskId(),
       TASK_EXECUTION_PROPERTY_MAP,
       dag,
       Collections.singletonList(mockStageEdgeTo(operatorIRVertex1)),
@@ -392,7 +392,7 @@ public final class TaskExecutorTest {
     when(broadcastManagerWorker.get(broadcastId)).thenReturn(new ArrayList<>(elements));
 
     final Task task = new Task(
-        "testSourceVertexDataFetching" + generateTaskId(),
+      "testSourceVertexDataFetching" + generateTaskId(),
       TASK_EXECUTION_PROPERTY_MAP,
       dag,
       Collections.singletonList(taskInEdge),
@@ -455,7 +455,7 @@ public final class TaskExecutorTest {
     final StageEdge outEdge3 = mockStageEdgeFrom(bonusVertex2);
 
     final Task task = new Task(
-        "testAdditionalOutputs" + generateTaskId(),
+      "testAdditionalOutputs" + generateTaskId(),
       TASK_EXECUTION_PROPERTY_MAP,
       dag,
       Collections.singletonList(mockStageEdgeTo(routerVertex)),

@@ -1,11 +1,11 @@
 package org.apache.nemo.runtime.master;
 
 import org.apache.nemo.common.Task;
-import org.apache.nemo.runtime.message.comm.ControlMessage;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.master.scheduler.PairStageTaskManager;
+import org.apache.nemo.runtime.message.comm.ControlMessage;
 
-import java.util.*;
+import java.util.Set;
 
 public interface ExecutorRepresenter {
 

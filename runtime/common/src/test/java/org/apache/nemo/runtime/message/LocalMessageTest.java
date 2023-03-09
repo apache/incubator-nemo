@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.nemo.runtime.message.local;
+package org.apache.nemo.runtime.message;
 
-import org.apache.nemo.runtime.message.*;
+import org.apache.nemo.runtime.message.local.LocalMessageDispatcher;
+import org.apache.nemo.runtime.message.local.LocalMessageEnvironment;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.Tang;
 import org.junit.Assert;
@@ -40,8 +41,7 @@ public class LocalMessageTest {
     final String executorOneNodeId = "EXECUTOR_ONE_NODE";
     final String executorTwoNodeId = "EXECUTOR_TWO_NODE";
 
-    final MessageEnvironment.ListenerType listenerIdToDriver =
-      MessageEnvironment.ListenerType.valueOf("ToDriver");
+    final MessageEnvironment.ListenerType listenerIdToDriver = MessageEnvironment.ListenerType.valueOf("ToDriver");
     final MessageEnvironment.ListenerType secondListenerIdToDriver =
       MessageEnvironment.ListenerType.valueOf("SecondToDriver");
     final MessageEnvironment.ListenerType listenerIdBetweenExecutors =

@@ -322,18 +322,19 @@ public final class DefaultTaskExecutorImplTest {
     masterSetupHelper.pipeIndexMap.put(Triple.of(task2Id, s1ToS2.getId(), task1Id), 2);
 
      final Task task1 =
-      new Task(
+       new Task(
         "testSourceVertexDataFetching" + task1Id,
         TASK_EXECUTION_PROPERTY_MAP,
         dag,
         Collections.emptyList(),
         Collections.singletonList(s1ToS2),
         vertexIdToReadable1,
-        Collections.emptyList(),
-        Task.TaskType.DefaultTask,
-        Collections.emptySet());
+      Collections.emptyList(),
+      Task.TaskType.DefaultTask,
+      Collections.emptySet());
 
-     final Task task2 =
+
+    final Task task2 =
       new Task(
         "task2plan" + task2Id,
         TASK_EXECUTION_PROPERTY_MAP,

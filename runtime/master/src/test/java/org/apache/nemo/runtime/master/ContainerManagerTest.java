@@ -109,9 +109,8 @@ public final class ContainerManagerTest {
             executorId,
             createMockEvaluator(evaluatorId, descriptor),
             createMockConfiguration());
-        final DefaultExecutorRepresenterImpl executorRepresenter =
-          (DefaultExecutorRepresenterImpl) containerManager
-            .onContainerLaunched(createMockContext(executorId, descriptor)).get();
+        final ExecutorRepresenter executorRepresenter =
+            containerManager.onContainerLaunched(createMockContext(executorId, descriptor)).get();
         assertEquals(spec.getContainerType(), executorRepresenter.getContainerType());
         assertEquals(spec.getCapacity(), executorRepresenter.getExecutorCapacity());
         assertEquals(descriptor.getNodeDescriptor().getName(), executorRepresenter.getNodeName());

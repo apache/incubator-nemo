@@ -18,17 +18,16 @@
  */
 package org.apache.nemo.runtime.executor;
 
+import org.apache.nemo.runtime.executor.common.MetricManagerWorker;
+import org.apache.nemo.runtime.master.DefaultExecutorRepresenterImpl;
+import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
+import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.message.MessageContext;
 import org.apache.nemo.runtime.message.MessageEnvironment;
 import org.apache.nemo.runtime.message.MessageListener;
 import org.apache.nemo.runtime.message.MessageSender;
-import org.apache.nemo.runtime.message.comm.ControlMessage;
-import org.apache.nemo.runtime.executor.common.MetricManagerWorker;
-import org.apache.nemo.runtime.master.DefaultExecutorRepresenterImpl;
 import org.apache.nemo.runtime.message.local.LocalMessageDispatcher;
 import org.apache.nemo.runtime.message.local.LocalMessageEnvironment;
-import org.apache.nemo.runtime.master.metric.MetricManagerMaster;
-import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.reef.tang.Injector;
 import org.apache.reef.tang.exceptions.InjectionException;
 import org.junit.runner.RunWith;
@@ -122,7 +121,8 @@ public final class MetricFlushTest {
   private static DefaultExecutorRepresenterImpl newWorker(final MessageSender masterToWorkerSender) {
     final DefaultExecutorRepresenterImpl workerRepresenter = mock(DefaultExecutorRepresenterImpl.class);
     doAnswer((Answer<Void>) invocationOnMock -> {
-      final ControlMessage.Message msg = (ControlMessage.Message) invocationOnMock.getArguments()[0];
+      final org.apache.nemo.runtime.message.comm.ControlMessage.Message msg =
+        (org.apache.nemo.runtime.message.comm.ControlMessage.Message) invocationOnMock.getArguments()[0];
       masterToWorkerSender.send(msg);
       return null;
     }).when(workerRepresenter).sendControlMessage(any());

@@ -21,14 +21,13 @@ package org.apache.nemo.runtime.master;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.protobuf.ByteString;
-import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
 import org.apache.nemo.common.RuntimeIdManager;
-import org.apache.nemo.runtime.master.resource.ResourceSpecification;
-import org.apache.nemo.runtime.message.comm.ControlMessage;
-import org.apache.nemo.runtime.message.MessageSender;
 import org.apache.nemo.common.Task;
+import org.apache.nemo.common.ir.vertex.executionproperty.ResourceSlotProperty;
+import org.apache.nemo.runtime.master.resource.ResourceSpecification;
 import org.apache.nemo.runtime.master.scheduler.ExecutorRegistry;
 import org.apache.nemo.runtime.master.scheduler.PairStageTaskManager;
+import org.apache.nemo.runtime.message.MessageSender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +36,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -67,7 +69,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
   private final Set<String> tasksToBeStopped;
   private final Set<Task> completeTasks;
   private final Set<Task> failedTasks;
-  private final MessageSender<ControlMessage.Message> messageSender;
+  private final MessageSender<org.apache.nemo.runtime.message.comm.ControlMessage.Message> messageSender;
   private final ExecutorShutdownHandler executorShutdownHandler;
   private final ExecutorService serializationExecutorService;
   private final String nodeName;
@@ -89,7 +91,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
    */
   public DefaultExecutorRepresenterImpl(final String executorId,
                                         final ResourceSpecification resourceSpecification,
-                                        final MessageSender<ControlMessage.Message> messageSender,
+                                        final MessageSender<org.apache.nemo.runtime.message.comm.ControlMessage.Message> messageSender,
                                         final ExecutorShutdownHandler executorShutdownHandler,
                                         final ExecutorService serializationExecutorService,
                                         final String nodeName,
@@ -148,11 +150,11 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     // send signal
     LOG.info("Activation lambda task {} / pairTask {} for executor {}, {}", taskId,
       pairVmTaskId, executorId, activatedPendingTasks);
-    vmExecutor.sendControlMessage(ControlMessage.Message.newBuilder()
+    vmExecutor.sendControlMessage(org.apache.nemo.runtime.message.comm.ControlMessage.Message.newBuilder()
       .setId(RuntimeIdManager.generateMessageId())
       .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-      .setType(ControlMessage.MessageType.RoutingDataToLambda)
-      .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+      .setType(org.apache.nemo.runtime.message.comm.ControlMessage.MessageType.RoutingDataToLambda)
+      .setStopTaskMsg(org.apache.nemo.runtime.message.comm.ControlMessage.StopTaskMessage.newBuilder()
         .setTaskId(pairVmTaskId)
         .build())
       .build());
@@ -403,11 +405,11 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     while (true) {
       if (!activatedPendingTasks.contains(taskId)) {
         LOG.info("Deactivation lambda task {} for executor {}", taskId, executorId);
-        sendControlMessage(ControlMessage.Message.newBuilder()
+        sendControlMessage(org.apache.nemo.runtime.message.comm.ControlMessage.Message.newBuilder()
           .setId(RuntimeIdManager.generateMessageId())
           .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-          .setType(ControlMessage.MessageType.RoutingDataToLambda)
-          .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+          .setType(org.apache.nemo.runtime.message.comm.ControlMessage.MessageType.RoutingDataToLambda)
+          .setStopTaskMsg(org.apache.nemo.runtime.message.comm.ControlMessage.StopTaskMessage.newBuilder()
             .setTaskId(taskId)
             .build())
           .build());
@@ -503,23 +505,23 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
 
       if (prevScheduled) {
         sendControlMessage(
-          ControlMessage.Message.newBuilder()
+          org.apache.nemo.runtime.message.comm.ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
             .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-            .setType(ControlMessage.MessageType.ScheduleCachedTask)
-            .setStopTaskMsg(ControlMessage.StopTaskMessage
+            .setType(org.apache.nemo.runtime.message.comm.ControlMessage.MessageType.ScheduleCachedTask)
+            .setStopTaskMsg(org.apache.nemo.runtime.message.comm.ControlMessage.StopTaskMessage
               .newBuilder()
               .setTaskId(task.getTaskId())
               .build())
             .build());
       } else {
         sendControlMessage(
-          ControlMessage.Message.newBuilder()
+          org.apache.nemo.runtime.message.comm.ControlMessage.Message.newBuilder()
             .setId(RuntimeIdManager.generateMessageId())
             .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-            .setType(ControlMessage.MessageType.ScheduleTask)
+            .setType(org.apache.nemo.runtime.message.comm.ControlMessage.MessageType.ScheduleTask)
             .setScheduleTaskMsg(
-              ControlMessage.ScheduleTaskMsg.newBuilder()
+              org.apache.nemo.runtime.message.comm.ControlMessage.ScheduleTaskMsg.newBuilder()
                 .setTask(ByteString.copyFrom(bos.toByteArray()))
                 .build())
             .build());
@@ -535,11 +537,11 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
     tasksToBeStopped.add(taskId);
 
     if (sendSignal) {
-      sendControlMessage(ControlMessage.Message.newBuilder()
+      sendControlMessage(org.apache.nemo.runtime.message.comm.ControlMessage.Message.newBuilder()
         .setId(RuntimeIdManager.generateMessageId())
         .setListenerId(EXECUTOR_MESSAGE_LISTENER_ID.ordinal())
-        .setType(ControlMessage.MessageType.StopTask)
-        .setStopTaskMsg(ControlMessage.StopTaskMessage.newBuilder()
+        .setType(org.apache.nemo.runtime.message.comm.ControlMessage.MessageType.StopTask)
+        .setStopTaskMsg(org.apache.nemo.runtime.message.comm.ControlMessage.StopTaskMessage.newBuilder()
           .setTaskId(taskId)
           .build())
         .build());
@@ -551,7 +553,7 @@ public final class DefaultExecutorRepresenterImpl implements ExecutorRepresenter
    * @param message Message object to send
    */
   @Override
-  public void sendControlMessage(final ControlMessage.Message message) {
+  public void sendControlMessage(final org.apache.nemo.runtime.message.comm.ControlMessage.Message message) {
     messageSender.send(message);
   }
 

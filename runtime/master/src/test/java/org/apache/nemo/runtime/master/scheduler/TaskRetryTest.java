@@ -17,23 +17,23 @@
  * under the License.
  */
 package org.apache.nemo.runtime.master.scheduler;
+
+import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.common.TaskState;
 import org.apache.nemo.common.eventhandler.PubSubEventHandlerWrapper;
 import org.apache.nemo.common.ir.vertex.executionproperty.ResourcePriorityProperty;
-import org.apache.nemo.common.RuntimeIdManager;
+import org.apache.nemo.runtime.common.plan.PhysicalPlan;
+import org.apache.nemo.runtime.common.plan.PlanRewriter;
+import org.apache.nemo.runtime.common.plan.TestPlanGenerator;
+import org.apache.nemo.runtime.common.state.BlockState;
+import org.apache.nemo.runtime.common.state.PlanState;
 import org.apache.nemo.runtime.master.*;
-import org.apache.nemo.runtime.message.comm.ControlMessage;
+import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
+import org.apache.nemo.runtime.master.resource.ResourceSpecification;
 import org.apache.nemo.runtime.message.MessageEnvironment;
 import org.apache.nemo.runtime.message.MessageSender;
 import org.apache.nemo.runtime.message.local.LocalMessageDispatcher;
 import org.apache.nemo.runtime.message.local.LocalMessageEnvironment;
-import org.apache.nemo.runtime.common.plan.PhysicalPlan;
-import org.apache.nemo.runtime.common.plan.PlanRewriter;
-import org.apache.nemo.runtime.common.state.BlockState;
-import org.apache.nemo.runtime.common.state.PlanState;
-import org.apache.nemo.common.TaskState;
-import org.apache.nemo.runtime.master.metric.MetricMessageHandler;
-import org.apache.nemo.runtime.master.resource.ResourceSpecification;
-import org.apache.nemo.runtime.common.plan.TestPlanGenerator;
 import org.apache.reef.driver.context.ActiveContext;
 import org.apache.reef.tang.Injector;
 import org.junit.Before;
@@ -157,13 +157,13 @@ public final class TaskRetryTest {
       return;
     }
 
-    final MessageSender<ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
+    final MessageSender<org.apache.nemo.runtime.message.comm.ControlMessage.Message> mockMsgSender = mock(MessageSender.class);
     final ActiveContext activeContext = mock(ActiveContext.class);
     Mockito.doThrow(new RuntimeException()).when(activeContext).close();
     final ExecutorService serExecutorService = Executors.newSingleThreadExecutor();
     final ResourceSpecification computeSpec = new ResourceSpecification(ResourcePriorityProperty.COMPUTE, 2, 0);
     final DefaultExecutorRepresenterImpl executor = new DefaultExecutorRepresenterImpl("EXECUTOR" + ID_OFFSET.getAndIncrement(),
-        computeSpec, mockMsgSender, (ExecutorShutdownHandler) activeContext, serExecutorService, "NODE" + ID_OFFSET.getAndIncrement(),
+      computeSpec, mockMsgSender, (ExecutorShutdownHandler) activeContext, serExecutorService, "NODE" + ID_OFFSET.getAndIncrement(),
       serializedTaskMap, optPolicy);
     scheduler.onExecutorAdded(executor);
   }
