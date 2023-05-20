@@ -26,7 +26,7 @@ Run `$ ./bin/install_nemo.sh` on the Nemo home directory. This script includes t
 * Maven
 * YARN settings
     * Download Hadoop 2.7.2 at https://archive.apache.org/dist/hadoop/common/hadoop-2.7.2/
-    * Set the shell profile as following:
+    * Set the shell profile as follows:
         ```bash
         export HADOOP_HOME=/path/to/hadoop-2.7.2
         export YARN_HOME=$HADOOP_HOME
@@ -77,7 +77,7 @@ Run `$ ./bin/install_nemo.sh` on the Nemo home directory. This script includes t
 ## Running Beam applications
 
 Apache Nemo is an official runner of Apache Beam, and it can be executed from Beam, using NemoRunner, as well as directly from the Nemo project.
-The details of using NemoRunner from Beam is shown on the [NemoRunner page of the Apache Beam website](https://beam.apache.org/documentation/runners/nemo/).
+The details of using NemoRunner from Beam are shown on the [NemoRunner page of the Apache Beam website](https://beam.apache.org/documentation/runners/nemo/).
 Below describes how Beam applications can be run directly on Nemo.
 
 ### Configurable options
@@ -135,7 +135,7 @@ $ ./bin/run_nexmark.sh \
   * `Reserved` : Containers that store eviction-free resources. `Reserved` containers are used to reliably store intermediate data which have high eviction cost.
   * `Compute` : Containers that are mainly used for computation.
 * `memory_mb`: Memory size in MB
-* `capacity`: Number of `Task`s that can be run in an executor. Set this value to be the same as the number of CPU cores of the container.
+* `capacity`: Number of `Task`s that can be run in an executor. Set this value to be the same as the number of CPU cores in the container.
 
 ### Examples
 ```json
@@ -204,6 +204,6 @@ $ ./bin/run_beam.sh \
 * `-db_password`: Credentials for the DB from the given address.
 
 ## Speeding up builds
-* To exclude Spark related packages: mvn clean install -T 2C -DskipTests -pl \\!compiler/frontend/spark,\\!examples/spark
-* To exclude Beam related packages: mvn clean install -T 2C -DskipTests -pl \\!compiler/frontend/beam,\\!examples/beam
-* To exclude NEXMark related packages: mvn clean install -T 2C -DskipTests -pl \\!examples/nexmark
+* To exclude Spark-related packages: mvn clean install -T 2C -DskipTests -pl \\!compiler/frontend/spark,\\!examples/spark
+* To exclude Beam-related packages: mvn clean install -T 2C -DskipTests -pl \\!compiler/frontend/beam,\\!examples/beam
+* To exclude NEXMark-related packages: mvn clean install -T 2C -DskipTests -pl \\!examples/nexmark
