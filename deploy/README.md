@@ -14,14 +14,14 @@
 
 ## Set up YARN/HDFS cluster
 * Set up the conf files(core-site.xml, hdfs-site.xml, yarn-site.xml, slaves, ...) on v-m, and `pscp` them to all v-w
-* hdfs namenode -format (does not always cleanly format... may need to delete the hdfs directory)
+* hdfs namenode -format (does not always clean format... may need to delete the hdfs directory)
 * start-yarn.sh && start-dfs.sh
 * For more information, refer to the official Hadoop website
 
 ## Viewing the YARN/HDFS Web UI (when the nodes can't be directly accessed from the internet)
 * This is the case for our cmslab cluster
 * Use ssh tunneling: `ssh -D 8123 -f -C -q -N username@gateway`
-* Turn on SOCKS proxy in chrome(web browser) advanced settings
+* Turn on SOCKS proxy in Chrome(web browser) advanced settings
 * Set your mac's `/etc/hosts`
 * Go to `v-m:8088` and `v-m:50070`
 
@@ -40,7 +40,7 @@
 
 ## Some Example Commands for copying files
 ```bash
-# miss any of these and you'll have a very intersting(?) YARN/HDFS cluster
+# miss any of these and you'll have a very interesting(?) YARN/HDFS cluster
 pscp -h ~/parallel/hostfile /etc/hosts /etc/hosts
 pscp -h ~/parallel/hostfile /home/ubuntu/hadoop/etc/hadoop/core-site.xml /home/ubuntu/hadoop/etc/hadoop/core-site.xml
 pscp -h ~/parallel/hostfile /home/ubuntu/hadoop/etc/hadoop/yarn-site.xml /home/ubuntu/hadoop/etc/hadoop/yarn-site.xml
