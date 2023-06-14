@@ -58,7 +58,7 @@ under the License.
     <hadoop.version>2.7.2</hadoop.version>
     <log4j.configuration>file://log4j.properties</log4j.configuration>
     <netty.version>4.1.79.Final</netty.version>
-    <guava.version>31.1-jre</guava.version>
+    <guava.version>32.0.0-jre</guava.version>
     <grpc.version>1.46.0</grpc.version> <!-- > 1.47.0 needs migration -->
     <jackson.version>2.10.5</jackson.version> <!-- > 2.11 needs migration -->
     <netlib.version>1.1.2</netlib.version>
