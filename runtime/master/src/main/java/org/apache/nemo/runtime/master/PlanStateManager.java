@@ -76,7 +76,7 @@ public final class PlanStateManager {
   private final Map<String, StageState> stageIdToState;
 
   // list of attempt states sorted by attempt idx
-  private final Map<String, Map<Integer, List<TaskState>>> stageIdToTaskIdxToAttemptStates;
+  private final Map<String, Map<Integer, List<List<TaskState>>>> stageIdToTaskIdxToAttemptStates;
 
   /**
    * Used for speculative cloning. (in the unit of milliseconds - ms)
@@ -101,6 +101,11 @@ public final class PlanStateManager {
    */
   private final String dagDirectory;
   private MetricStore metricStore;
+
+  /**
+   * For dynamic optimization.
+   */
+  private final int maxSubTaskSplitNum = 5;
 
   /**
    * Constructor.
@@ -168,7 +173,7 @@ public final class PlanStateManager {
 
       // for each task idx of this stage
       stage.getTaskIndices().forEach(taskIndex ->
-        stageIdToTaskIdxToAttemptStates.get(stage.getId()).putIfAbsent(taskIndex, new ArrayList<>()));
+        stageIdToTaskIdxToAttemptStates.get(stage.getId()).putIfAbsent(taskIndex, new ArrayList<>(maxSubTaskSplitNum)));
         // task states will be initialized lazily in getTaskAttemptsToSchedule()
     });
   }
@@ -183,6 +188,7 @@ public final class PlanStateManager {
    * @return executable task attempts
    */
   public synchronized List<String> getTaskAttemptsToSchedule(final String stageId) {
+    // initialization: 첫번째로 만들어지는케이스를 따로 생각해야 함.
     if (getStageState(stageId).equals(StageState.State.COMPLETE)) {
       // This stage is done
       return new ArrayList<>(0);
@@ -192,46 +198,62 @@ public final class PlanStateManager {
     final List<String> taskAttemptsToSchedule = new ArrayList<>();
     final Stage stage = physicalPlan.getStageDAG().getVertexById(stageId);
     for (final int taskIndex : stage.getTaskIndices()) {
-      final List<TaskState> attemptStatesForThisTaskIndex =
+      final List<List<TaskState>> attemptStatesPerPartialTaskForThisTaskIndex =
         stageIdToTaskIdxToAttemptStates.get(stageId).get(taskIndex);
-
-      // If one of the attempts is COMPLETE, do not schedule
-      if (attemptStatesForThisTaskIndex
-        .stream()
-        .noneMatch(state -> state.getStateMachine().getCurrentState().equals(TaskState.State.COMPLETE))) {
-
-        // (Step 1) Create new READY attempts, as many as
-        // # of numOfConcurrentAttempts(including clones) - # of 'not-done' attempts
-        stageIdToTaskIndexToNumOfClones.putIfAbsent(stageId, new HashMap<>());
-        final Optional<ClonedSchedulingProperty.CloneConf> cloneConf =
-          stage.getPropertyValue(ClonedSchedulingProperty.class);
-        final int numOfConcurrentAttempts = cloneConf.isPresent() && cloneConf.get().isUpFrontCloning()
-          // For now we support up to 1 clone (2 concurrent = 1 original + 1 clone)
-          ? 2
-          // If the property is not set, then we do not clone (= 1 concurrent)
-          : stageIdToTaskIndexToNumOfClones.get(stageId).getOrDefault(stageId, 1);
-        final long numOfNotDoneAttempts = attemptStatesForThisTaskIndex.stream().filter(this::isTaskNotDone).count();
-        for (int i = 0; i < numOfConcurrentAttempts - numOfNotDoneAttempts; i++) {
-          attemptStatesForThisTaskIndex.add(new TaskState());
+      if (attemptStatesPerPartialTaskForThisTaskIndex.size() == 0) {
+        // initialize in here
+        for (int i = 0; i < stage.getSubSplitNum(); i++) {
+          attemptStatesPerPartialTaskForThisTaskIndex.add(new ArrayList<>());
         }
+      }
+      for (List<TaskState> attemptStatesForThisPartialTaskIndex : attemptStatesPerPartialTaskForThisTaskIndex) {
 
-        // (Step 2) Check max attempt
-        if (attemptStatesForThisTaskIndex.size() > maxScheduleAttempt) {
-          throw new RuntimeException(
-            attemptStatesForThisTaskIndex.size() + " exceeds max attempt " + maxScheduleAttempt);
-        }
+        // If one of the attempts is COMPLETE, do not schedule
+        if (attemptStatesForThisPartialTaskIndex
+          .stream()
+          .noneMatch(state -> state.getStateMachine().getCurrentState().equals(TaskState.State.COMPLETE))) {
 
-        // (Step 3) Return all READY attempts
-        for (int attempt = 0; attempt < attemptStatesForThisTaskIndex.size(); attempt++) {
-          if (attemptStatesForThisTaskIndex.get(attempt).getStateMachine().getCurrentState()
-            .equals(TaskState.State.READY)) {
-            taskAttemptsToSchedule.add(RuntimeIdManager.generateTaskId(stageId, taskIndex, attempt));
+          // (Step 1) Create new READY attempts, as many as
+          // # of numOfConcurrentAttempts(including clones) - # of 'not-done' attempts
+          stageIdToTaskIndexToNumOfClones.putIfAbsent(stageId, new HashMap<>());
+          final Optional<ClonedSchedulingProperty.CloneConf> cloneConf =
+            stage.getPropertyValue(ClonedSchedulingProperty.class);
+          final int numOfConcurrentAttempts = cloneConf.isPresent() && cloneConf.get().isUpFrontCloning()
+            // For now we support up to 1 clone (2 concurrent = 1 original + 1 clone)
+            ? 2
+            // If the property is not set, then we do not clone (= 1 concurrent)
+            : stageIdToTaskIndexToNumOfClones.get(stageId).getOrDefault(stageId, 1);
+          final long numOfNotDoneAttempts = attemptStatesForThisPartialTaskIndex
+            .stream().filter(this::isTaskNotDone).count();
+          for (int i = 0; i < numOfConcurrentAttempts - numOfNotDoneAttempts; i++) {
+            attemptStatesForThisPartialTaskIndex.add(new TaskState());
           }
-        }
+
+          // (Step 2) Check max attempt
+          if (attemptStatesForThisPartialTaskIndex.size() > maxScheduleAttempt) {
+            throw new RuntimeException(
+              attemptStatesForThisPartialTaskIndex.size() + " exceeds max attempt " + maxScheduleAttempt);
+          }
+
+          // (Step 3) Return all READY attempts
+          for (int attempt = 0; attempt < attemptStatesForThisPartialTaskIndex.size(); attempt++) {
+            if (attemptStatesForThisPartialTaskIndex.get(attempt).getStateMachine().getCurrentState()
+              .equals(TaskState.State.READY)) {
+              if (attemptStatesPerPartialTaskForThisTaskIndex.size() > 1) {
+
+                taskAttemptsToSchedule.add(RuntimeIdManager.generateWorkStealingTaskId(stageId, taskIndex,
+                  attemptStatesPerPartialTaskForThisTaskIndex.indexOf(attemptStatesForThisPartialTaskIndex), attempt));
+              } else {
+                taskAttemptsToSchedule.add(RuntimeIdManager.generateTaskId(stageId, taskIndex, attempt));
+              }
+
+            }
+          }
+      }
+
 
       }
     }
-
     return taskAttemptsToSchedule;
   }
 
@@ -254,13 +276,15 @@ public final class PlanStateManager {
     final long curTime = System.currentTimeMillis();
     final Map<String, Long> result = new HashMap<>();
 
-    final Map<Integer, List<TaskState>> taskIdToState = stageIdToTaskIdxToAttemptStates.get(stageId);
+    final Map<Integer, List<List<TaskState>>> taskIdToState = stageIdToTaskIdxToAttemptStates.get(stageId);
     for (final int taskIndex : taskIdToState.keySet()) {
-      final List<TaskState> attemptStates = taskIdToState.get(taskIndex);
-      for (int attempt = 0; attempt < attemptStates.size(); attempt++) {
-        if (TaskState.State.EXECUTING.equals(attemptStates.get(attempt).getStateMachine().getCurrentState())) {
-          final String taskId = RuntimeIdManager.generateTaskId(stageId, taskIndex, attempt);
-          result.put(taskId, curTime - taskIdToStartTimeMs.get(taskId));
+      final List<List<TaskState>> listOfAttemptStates = taskIdToState.get(taskIndex);
+      for (List<TaskState> attemptStates: listOfAttemptStates) {
+        for (int attempt = 0; attempt < attemptStates.size(); attempt++) {
+          if (TaskState.State.EXECUTING.equals(attemptStates.get(attempt).getStateMachine().getCurrentState())) {
+            final String taskId = RuntimeIdManager.generateTaskId(stageId, taskIndex, attempt);
+            result.put(taskId, curTime - taskIdToStartTimeMs.get(taskId));
+          }
         }
       }
     }
@@ -325,8 +349,9 @@ public final class PlanStateManager {
 
     // Log not-yet-completed tasks for us humans to track progress
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
-    final Map<Integer, List<TaskState>> taskStatesOfThisStage = stageIdToTaskIdxToAttemptStates.get(stageId);
+    final Map<Integer, List<List<TaskState>>> taskStatesOfThisStage = stageIdToTaskIdxToAttemptStates.get(stageId);
     final long numOfCompletedTaskIndicesInThisStage = taskStatesOfThisStage.values().stream()
+      .flatMap(Collection::stream)
       .filter(attempts -> {
         final List<TaskState.State> states = attempts
           .stream()
@@ -337,8 +362,11 @@ public final class PlanStateManager {
       })
       .count();
     if (newTaskState.equals(TaskState.State.COMPLETE)) {
+      // 여기 나중에 고쳐야 함
+      final int numOfTasksOfThisStage = taskStatesOfThisStage.values().stream()
+        .mapToInt(partialTasks -> partialTasks.size()).sum();
       LOG.info("{} completed: {} Task(s) out of {} are remaining in this stage",
-        taskId, taskStatesOfThisStage.size() - numOfCompletedTaskIndicesInThisStage, taskStatesOfThisStage.size());
+        taskId, numOfTasksOfThisStage - numOfCompletedTaskIndicesInThisStage, numOfTasksOfThisStage);
     }
 
     // Maintain info for speculative execution
@@ -361,11 +389,12 @@ public final class PlanStateManager {
         }
         break;
 
-      // COMPLETE stage
+      // COMPLETE stage 여기도 고쳐야 함
       case COMPLETE:
       case ON_HOLD:
+        Stage currentStage = physicalPlan.getStageDAG().getVertexById(stageId);
         if (numOfCompletedTaskIndicesInThisStage
-          == physicalPlan.getStageDAG().getVertexById(stageId).getTaskIndices().size()) {
+          == (long) currentStage.getTaskIndices().size() * currentStage.getSubSplitNum()) {
           onStageStateChanged(stageId, StageState.State.COMPLETE);
         }
         break;
@@ -538,13 +567,26 @@ public final class PlanStateManager {
 
   private Map<String, TaskState.State> getTaskAttemptIdsToItsState(final String stageId) {
     final Map<String, TaskState.State> result = new HashMap<>();
-    final Map<Integer, List<TaskState>> taskIdToState = stageIdToTaskIdxToAttemptStates.get(stageId);
-    for (final int taskIndex : taskIdToState.keySet()) {
-      final List<TaskState> attemptStates = taskIdToState.get(taskIndex);
-      for (int attempt = 0; attempt < attemptStates.size(); attempt++) {
-        result.put(RuntimeIdManager.generateTaskId(stageId, taskIndex, attempt),
-          (TaskState.State) attemptStates.get(attempt).getStateMachine().getCurrentState());
+    final Map<Integer, List<List<TaskState>>> taskIdToState = stageIdToTaskIdxToAttemptStates.get(stageId);
+    for (int taskIndex : taskIdToState.keySet()) {
+      List<List<TaskState>> partialIdxAttempts = taskIdToState.get(taskIndex);
+      if (partialIdxAttempts.size() > 1) {
+        for (int partialIdx = 0; partialIdx < partialIdxAttempts.size(); partialIdx++) {
+          List<TaskState> attemptStates = partialIdxAttempts.get(partialIdx);
+          for (int attempt = 0; attempt < attemptStates.size(); attempt++) {
+            result.put(RuntimeIdManager.generateWorkStealingTaskId(stageId, taskIndex, partialIdx, attempt),
+              (TaskState.State) attemptStates.get(attempt).getStateMachine().getCurrentState());
+          }
+        }
+      } else {
+        for (List<TaskState> attemptStates : partialIdxAttempts) {
+          for (int attempt = 0; attempt < attemptStates.size(); attempt++) {
+            result.put(RuntimeIdManager.generateTaskId(stageId, taskIndex, attempt),
+              (TaskState.State) attemptStates.get(attempt).getStateMachine().getCurrentState());
+          }
+        }
       }
+
     }
     return result;
   }
@@ -553,6 +595,7 @@ public final class PlanStateManager {
     return stageIdToTaskIdxToAttemptStates
       .get(RuntimeIdManager.getStageIdFromTaskId(taskId))
       .get(RuntimeIdManager.getIndexFromTaskId(taskId))
+      .get(RuntimeIdManager.getSubSplitIndexFromTaskId(taskId))
       .get(RuntimeIdManager.getAttemptFromTaskId(taskId));
   }
 
@@ -566,10 +609,11 @@ public final class PlanStateManager {
   private List<TaskState.State> getPeerAttemptsForTheSameTaskIndex(final String taskId) {
     final String stageId = RuntimeIdManager.getStageIdFromTaskId(taskId);
     final int taskIndex = RuntimeIdManager.getIndexFromTaskId(taskId);
+    final int partialIndex = RuntimeIdManager.getSubSplitIndexFromTaskId(taskId);
     final int attempt = RuntimeIdManager.getAttemptFromTaskId(taskId);
 
     final List<TaskState> otherAttemptsforTheSameTaskIndex =
-      new ArrayList<>(stageIdToTaskIdxToAttemptStates.get(stageId).get(taskIndex));
+      new ArrayList<>(stageIdToTaskIdxToAttemptStates.get(stageId).get(taskIndex).get(partialIndex));
     otherAttemptsforTheSameTaskIndex.remove(attempt);
 
     return otherAttemptsforTheSameTaskIndex.stream()

@@ -71,7 +71,17 @@ public final class RuntimeIdManager {
     if (index < 0 || attempt < 0) {
       throw new IllegalStateException(index + ", " + attempt);
     }
-    return stageId + SPLITTER + index + SPLITTER + attempt;
+    return stageId + SPLITTER + index + SPLITTER + "*" + SPLITTER + attempt;
+  }
+
+  public static String generateWorkStealingTaskId(final String stageId,
+                                                  final int index,
+                                                  final int partial,
+                                                  final int attempt) {
+    if (index < 0 || partial < 0 || attempt < 0) {
+      throw new IllegalStateException(index + ", " + partial + ", " + attempt);
+    }
+    return stageId + SPLITTER + index + SPLITTER + partial + SPLITTER + attempt;
   }
 
   /**
@@ -92,8 +102,14 @@ public final class RuntimeIdManager {
    */
   public static String generateBlockId(final String runtimeEdgeId,
                                        final String producerTaskId) {
-    return runtimeEdgeId + SPLITTER + getIndexFromTaskId(producerTaskId)
-      + SPLITTER + getAttemptFromTaskId(producerTaskId);
+    if (isWorkStealingTask(producerTaskId)) {
+      return runtimeEdgeId + SPLITTER + getIndexFromTaskId(producerTaskId)
+        + SPLITTER + getSubSplitIndexFromTaskId(producerTaskId)
+        + SPLITTER + getAttemptFromTaskId(producerTaskId);
+    } else {
+      return runtimeEdgeId + SPLITTER + getIndexFromTaskId(producerTaskId)
+        + SPLITTER + getAttemptFromTaskId(producerTaskId);
+    }
   }
 
   /**
@@ -109,8 +125,15 @@ public final class RuntimeIdManager {
    * @return the generated WILDCARD ID
    */
   public static String generateBlockIdWildcard(final String runtimeEdgeId,
-                                               final int producerTaskIndex) {
-    return runtimeEdgeId + SPLITTER + producerTaskIndex + SPLITTER + "*";
+                                               final int producerTaskIndex,
+                                               final String subSplitIndex) {
+    if (!subSplitIndex.equals("*")) {
+      return runtimeEdgeId + SPLITTER + producerTaskIndex
+        + SPLITTER + subSplitIndex + SPLITTER + "*";
+    } else {
+      return runtimeEdgeId + SPLITTER + producerTaskIndex + SPLITTER + "*";
+    }
+
   }
 
   /**
@@ -123,6 +146,9 @@ public final class RuntimeIdManager {
   }
 
   //////////////////////////////////////////////////////////////// Parse IDs
+  public static boolean isWorkStealingBlock(final String blockId) {
+    return split(blockId).length == 4;
+  }
 
   /**
    * Extracts runtime edge ID from a block ID.
@@ -145,13 +171,29 @@ public final class RuntimeIdManager {
   }
 
   /**
+   * Extracts task index from a block ID.
+   *
+   * @param blockId the block ID to extract.
+   * @return the task index.
+   */
+  public static String getTaskSubSplitIndexFromBlockId(final String blockId) {
+    if (isWorkStealingBlock(blockId)) {
+      return split(blockId)[2];
+    } else {
+      return "*";
+    }
+  }
+
+  /**
    * Extracts wild card from a block ID.
    *
    * @param blockId the block ID to extract.
    * @return the wild card.
    */
   public static String getWildCardFromBlockId(final String blockId) {
-    return generateBlockIdWildcard(getRuntimeEdgeIdFromBlockId(blockId), getTaskIndexFromBlockId(blockId));
+    return generateBlockIdWildcard(getRuntimeEdgeIdFromBlockId(blockId),
+      getTaskIndexFromBlockId(blockId),
+      getTaskSubSplitIndexFromBlockId(blockId));
   }
 
   /**
@@ -174,6 +216,13 @@ public final class RuntimeIdManager {
     return Integer.valueOf(split(taskId)[1]);
   }
 
+  public static boolean isWorkStealingTask(final String taskId) {
+    return !split(taskId)[2].equals("*");
+  }
+
+  public static int getSubSplitIndexFromTaskId(final String taskId) {
+    return split(taskId)[2].equals("*") ? 0 : Integer.valueOf(split(taskId)[2]);
+  }
   /**
    * Extracts the attempt from a task ID.
    *
@@ -181,7 +230,7 @@ public final class RuntimeIdManager {
    * @return the attempt.
    */
   public static int getAttemptFromTaskId(final String taskId) {
-    return Integer.valueOf(split(taskId)[2]);
+    return Integer.valueOf(split(taskId)[3]);
   }
 
   private static String[] split(final String id) {

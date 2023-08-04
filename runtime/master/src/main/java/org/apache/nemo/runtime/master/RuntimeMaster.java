@@ -242,7 +242,7 @@ public final class RuntimeMaster {
 
     // save metric to file
     metricStore.dumpAllMetricToFile(Paths.get(dagDirectory,
-      "Metric_" + jobId + "_" + System.currentTimeMillis() + ".json").toString());
+      "Metric_" + jobId + ".json").toString());
 
     // save metric to database
     if (this.dbEnabled) {
