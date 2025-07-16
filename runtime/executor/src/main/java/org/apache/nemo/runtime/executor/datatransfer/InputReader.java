@@ -38,6 +38,14 @@ public interface InputReader {
    */
   List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read();
 
+   /** Reads input data depending on the communication pattern of the srcVertex.
+   *
+     * @return the list of iterators.
+    */
+  List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read(String workStealingState,
+                                                              int maxSplitNum,
+                                                              int index);
+
   /**
    * Retry reading input data.
    *
@@ -45,6 +53,17 @@ public interface InputReader {
    * @return the retried iterator.
    */
   CompletableFuture<DataUtil.IteratorWithNumBytes> retry(int index);
+
+  /**
+   * Retry reading input data during work stealing.
+   * @param workStealingState work stealing state (SPLIT, MERGE, DEFAULT)
+   * @param numSubSplit number of sub-splits in SPLIT state, default by 1 in other states.
+   * @param index of the failed iterator in the list returned by read().
+   * @return the retried iterator.
+   */
+  CompletableFuture<DataUtil.IteratorWithNumBytes> retry(String workStealingState,
+                                                         int numSubSplit,
+                                                         int index);
 
   IRVertex getSrcIrVertex();
 

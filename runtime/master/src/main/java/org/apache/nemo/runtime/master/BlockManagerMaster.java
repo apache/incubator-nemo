@@ -58,7 +58,7 @@ public final class BlockManagerMaster {
   private final Map<String, Set<String>> producerTaskIdToBlockIds; // a task can have multiple out-edges
 
   /**
-   * See {@link RuntimeIdManager#generateBlockIdWildcard(String, int)} for information on block wildcards.
+   * See {@link RuntimeIdManager#generateBlockIdWildcard(String, String)} for information on block wildcards.
    */
   private final Map<String, Set<BlockMetadata>> blockIdWildcardToMetadataSet; // a metadata = a task attempt output
 

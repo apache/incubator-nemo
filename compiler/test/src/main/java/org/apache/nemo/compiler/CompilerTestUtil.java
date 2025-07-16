@@ -104,6 +104,18 @@ public final class CompilerTestUtil {
     return compileDAG(mrArgBuilder.build());
   }
 
+  public static IRDAG compileWordCountWorkStealingDAG() throws Exception {
+    final String input = ROOT_DIR + "/examples/resources/inputs/test_input_wordcount";
+    final String output = ROOT_DIR + "/examples/resources/inputs/test_output";
+    final String main = "org.apache.nemo.examples.beam.WordCount";
+
+    final ArgBuilder mrArgBuilder = new ArgBuilder()
+      .addJobId("WordCount")
+      .addUserMain(main)
+      .addUserArgs(input, output, "true");
+    return compileDAG(mrArgBuilder.build());
+  }
+
   public static IRDAG compileALSDAG() throws Exception {
     final String input = ROOT_DIR + "/examples/resources/inputs/test_input_als";
     final String numFeatures = "10";

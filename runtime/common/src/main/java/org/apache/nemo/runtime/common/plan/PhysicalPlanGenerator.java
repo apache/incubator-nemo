@@ -32,8 +32,10 @@ import org.apache.nemo.common.ir.executionproperty.VertexExecutionProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.ir.vertex.OperatorVertex;
 import org.apache.nemo.common.ir.vertex.SourceVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.WorkStealingStateProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ParallelismProperty;
 import org.apache.nemo.common.ir.vertex.executionproperty.ScheduleGroupProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.WorkStealingSubSplitProperty;
 import org.apache.nemo.common.ir.vertex.utility.SamplingVertex;
 import org.apache.nemo.conf.JobConf;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
@@ -132,6 +134,7 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
    */
   public DAG<Stage, StageEdge> stagePartitionIrDAG(final IRDAG irDAG) {
     final StagePartitioner stagePartitioner = new StagePartitioner();
+
     final DAGBuilder<Stage, StageEdge> dagOfStagesBuilder = new DAGBuilder<>();
     final Set<IREdge> interStageEdges = new HashSet<>();
     final Map<Integer, Stage> stageIdToStageMap = new HashMap<>();
@@ -208,12 +211,20 @@ public final class PhysicalPlanGenerator implements Function<IRDAG, DAG<Stage, S
       if (!stageInternalDAGBuilder.isEmpty()) {
         final DAG<IRVertex, RuntimeEdge<IRVertex>> stageInternalDAG
           = stageInternalDAGBuilder.buildWithoutSourceSinkCheck();
+        // check if this stage is subject of work stealing optimization
+        boolean isWorkStealingStage = stageInternalDAG.getVertices().stream()
+          .anyMatch(vertex -> vertex.getPropertyValue(WorkStealingStateProperty.class)
+            .orElse("DEFAULT").equals("SPLIT"));
+        int numSubSplit = stageInternalDAG.getVertices().stream()
+          .mapToInt(v -> v.getPropertyValue(WorkStealingSubSplitProperty.class).orElse(1))
+          .max().orElse(1);
         final Stage stage = new Stage(
           stageIdentifier,
           taskIndices,
           stageInternalDAG,
           stageProperties,
-          vertexIdToReadables);
+          vertexIdToReadables,
+          isWorkStealingStage ? numSubSplit : 1);
         dagOfStagesBuilder.addVertex(stage);
         stageIdToStageMap.put(stageId, stage);
       }

@@ -27,6 +27,7 @@ import org.apache.nemo.common.ir.vertex.transform.Transform;
  */
 public class OperatorVertex extends IRVertex {
   private final Transform transform;
+  private final String transformFullName;
 
   /**
    * Constructor of OperatorVertex.
@@ -36,6 +37,12 @@ public class OperatorVertex extends IRVertex {
   public OperatorVertex(final Transform t) {
     super();
     this.transform = t;
+    this.transformFullName = "";
+  }
+
+  public OperatorVertex(final Transform t, final String transformFullName) {
+    this.transform = t;
+    this.transformFullName = transformFullName;
   }
 
   /**
@@ -46,6 +53,7 @@ public class OperatorVertex extends IRVertex {
   private OperatorVertex(final OperatorVertex that) {
     super(that);
     this.transform = that.transform;
+    this.transformFullName = that.transformFullName;
   }
 
   @Override
@@ -58,6 +66,10 @@ public class OperatorVertex extends IRVertex {
    */
   public final Transform getTransform() {
     return transform;
+  }
+
+  public final String getTransformFullName() {
+    return transformFullName;
   }
 
   @Override

@@ -84,8 +84,22 @@ public final class PipeInputReader implements InputReader {
   }
 
   @Override
+  public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read(final String workStealingState,
+                                                                     final int maxSplitNum,
+                                                                     final int index) {
+    return read();
+  }
+
+  @Override
   public CompletableFuture<DataUtil.IteratorWithNumBytes> retry(final int index) {
     throw new UnsupportedOperationException(String.valueOf(index));
+  }
+
+  @Override
+  public CompletableFuture<DataUtil.IteratorWithNumBytes> retry(final String workStealingState,
+                                                                final int numSubSplit,
+                                                                final int index) {
+    return retry(index);
   }
 
   @Override

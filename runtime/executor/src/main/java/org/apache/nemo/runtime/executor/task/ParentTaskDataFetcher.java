@@ -23,6 +23,7 @@ import org.apache.nemo.common.ir.OutputCollector;
 import org.apache.nemo.common.ir.edge.executionproperty.BlockFetchFailureProperty;
 import org.apache.nemo.common.ir.vertex.IRVertex;
 import org.apache.nemo.common.punctuation.Finishmark;
+import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.executor.data.DataUtil;
 import org.apache.nemo.runtime.executor.datatransfer.InputReader;
 import org.slf4j.Logger;
@@ -41,6 +42,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 class ParentTaskDataFetcher extends DataFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(ParentTaskDataFetcher.class);
 
+  private final String taskId;
   private final InputReader inputReader;
   private final LinkedBlockingQueue iteratorQueue;
 
@@ -53,11 +55,21 @@ class ParentTaskDataFetcher extends DataFetcher {
   private long serBytes = 0;
   private long encodedBytes = 0;
 
+  private final int subSplitNum;
+  private final String workStealingState;
+
+
   ParentTaskDataFetcher(final IRVertex dataSource,
                         final InputReader inputReader,
-                        final OutputCollector outputCollector) {
+                        final OutputCollector outputCollector,
+                        final String workStealingState,
+                        final int subSplitNum,
+                        final String taskId) {
     super(dataSource, outputCollector);
+    this.taskId = taskId;
     this.inputReader = inputReader;
+    this.workStealingState = workStealingState;
+    this.subSplitNum = subSplitNum;
     this.firstFetch = true;
     this.readNotSerialized = false;
     this.currentIteratorIndex = 0;
@@ -138,7 +150,8 @@ class ParentTaskDataFetcher extends DataFetcher {
               inputReader.getSrcIrVertex().getId(), index);
             final int twoSecondsInMs =  2 * 1000;
             Thread.sleep(twoSecondsInMs);
-            final CompletableFuture<DataUtil.IteratorWithNumBytes> retryFuture = inputReader.retry(index);
+            final CompletableFuture<DataUtil.IteratorWithNumBytes> retryFuture = inputReader.retry(
+              workStealingState, subSplitNum, index);
             handleIncomingBlock(index, retryFuture);
           } else if (fetchFailure.equals(BlockFetchFailureProperty.Value.CANCEL_TASK)) {
             // Retry the entire task
@@ -158,7 +171,8 @@ class ParentTaskDataFetcher extends DataFetcher {
   }
 
   private void fetchDataLazily() {
-    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = inputReader.read();
+    final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = inputReader
+      .read(workStealingState, subSplitNum, RuntimeIdManager.getSubSplitIndexFromTaskId(taskId));
     this.expectedNumOfIterators = futures.size();
     for (int i = 0; i < futures.size(); i++) {
       final int index = i;

@@ -30,6 +30,8 @@ import org.apache.nemo.common.ir.edge.executionproperty.PartitionerProperty;
 import org.apache.nemo.common.ir.executionproperty.EdgeExecutionProperty;
 import org.apache.nemo.common.ir.executionproperty.ExecutionPropertyMap;
 import org.apache.nemo.common.ir.vertex.IRVertex;
+import org.apache.nemo.common.ir.vertex.executionproperty.WorkStealingStateProperty;
+import org.apache.nemo.common.ir.vertex.executionproperty.WorkStealingSubSplitProperty;
 import org.apache.nemo.runtime.common.RuntimeIdManager;
 import org.apache.nemo.runtime.common.plan.RuntimeEdge;
 import org.apache.nemo.runtime.common.plan.StageEdge;
@@ -52,6 +54,10 @@ public final class BlockInputReader implements InputReader {
   private final MetricMessageSender metricMessageSender;
   private final String dstTaskId;
   private final int dstTaskIndex;
+
+  private static final String SPLIT_STRATEGY = "SPLIT";
+  private static final String MERGE_STRATEGY = "MERGE";
+  private static final String DEFAULT_STRATEGY = "DEFAULT";
 
   /**
    * Attributes that specify how we should read the input.
@@ -82,13 +88,51 @@ public final class BlockInputReader implements InputReader {
       case ONE_TO_ONE:
         return Collections.singletonList(readOneToOne());
       case BROADCAST:
-        return readBroadcast(index -> true);
+        return readBroadcast(index -> true, Optional.empty(), 1);
       case SHUFFLE:
-        return readDataInRange(index -> true);
+        return readDataInRange(index -> true, Optional.empty(), 1);
       default:
         throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
   }
+
+  /**
+   * An extended version of {@link #read()} with work stealing options.
+   * - DEFAULT STRATEGY: {@link #read()}
+   * - SPLIT STRATEGY: {@link #readPartial(int, int)}
+   * - MERGE STRATEGY: {@link #readSplitBlocks(int, int)}
+   *
+   * @param workStealingState work stealing strategy.
+   * @param numSubSplit       number to split within a task index.
+   * @param subSplitIndex     index of sub split task.
+   * @return
+   */
+  @Override
+  public List<CompletableFuture<DataUtil.IteratorWithNumBytes>> read(final String workStealingState,
+                                                                     final int numSubSplit,
+                                                                     final int subSplitIndex) {
+    if (workStealingState.equals(MERGE_STRATEGY)
+      && srcVertex.getPropertyValue(WorkStealingStateProperty.class).orElse(DEFAULT_STRATEGY)
+        .equals(SPLIT_STRATEGY)) {
+      /* MERGE case */
+      return readSplitBlocks(InputReader.getSourceParallelism(this),
+        srcVertex.getPropertyValue(WorkStealingSubSplitProperty.class).orElse(1));
+    } else {
+
+      if (workStealingState.equals(SPLIT_STRATEGY)) {
+        /* SPLIT case */
+        final int srcParallelism = InputReader.getSourceParallelism(this);
+        final int leftInterval = subSplitIndex * (srcParallelism / numSubSplit);
+        final int rightInterval = numSubSplit == subSplitIndex + 1
+          ? srcParallelism : (subSplitIndex + 1) * (srcParallelism / numSubSplit);
+        return readPartial(leftInterval, rightInterval);
+      }
+
+      /* DEFAULT case */
+      return read();
+    }
+  }
+
 
   @Override
   public CompletableFuture<DataUtil.IteratorWithNumBytes> retry(final int desiredIndex) {
@@ -100,9 +144,55 @@ public final class BlockInputReader implements InputReader {
       case ONE_TO_ONE:
         return readOneToOne();
       case BROADCAST:
-        return checkSingleElement(readBroadcast(index -> index == desiredIndex));
+        return checkSingleElement(readBroadcast(index -> index == desiredIndex, Optional.empty(), 1));
       case SHUFFLE:
-        return checkSingleElement(readDataInRange(index -> index == desiredIndex));
+        return checkSingleElement(readDataInRange(index -> index == desiredIndex, Optional.empty(), 1));
+      default:
+        throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
+    }
+  }
+
+  /**
+   * An extended version of {@link #retry(int)} with work stealing options.
+   *
+   * @param workStealingState work stealing strategy. (SPLIT, MERGE, DEFAULT)
+   * @param numSubSplit       number of sub-splits in SPLIT state, default by 1 in other states.
+   * @param desiredIndex      desired index.
+   * @return  iterator to retry.
+   */
+  @Override
+  public CompletableFuture<DataUtil.IteratorWithNumBytes> retry(final String workStealingState,
+                                                                final int numSubSplit,
+                                                                final int desiredIndex) {
+
+    final boolean isMergeAfterSplit = workStealingState.equals(MERGE_STRATEGY)
+      && srcVertex.getPropertyValue(WorkStealingStateProperty.class).orElse(DEFAULT_STRATEGY)
+        .equals(SPLIT_STRATEGY);
+
+    if (!isMergeAfterSplit && !workStealingState.equals(SPLIT_STRATEGY)) {
+      return retry(desiredIndex);
+    }
+
+    final int srcParallelism = InputReader.getSourceParallelism(this);
+    final int srcNumSubSplit = srcVertex.getPropertyValue(WorkStealingSubSplitProperty.class).orElse(1);
+    final int trueIndex = translateIndex(workStealingState, numSubSplit, desiredIndex);
+    final int subIndex =  isMergeAfterSplit ? desiredIndex % srcNumSubSplit : 0;
+
+    final Optional<CommunicationPatternProperty.Value> comValueOptional =
+      runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
+    final CommunicationPatternProperty.Value comValue = comValueOptional.orElseThrow(IllegalStateException::new);
+
+    switch (comValue) {
+      case ONE_TO_ONE:
+        return readOneToOne();
+      case BROADCAST:
+        return readBroadcast(index -> index == trueIndex,
+          isMergeAfterSplit ? Optional.of(srcParallelism) : Optional.empty(),
+          isMergeAfterSplit ? srcNumSubSplit : 1).get(subIndex);
+      case SHUFFLE:
+        return readDataInRange(index -> index == trueIndex,
+          isMergeAfterSplit ? Optional.of(srcParallelism) : Optional.empty(),
+          isMergeAfterSplit ? srcNumSubSplit : 1).get(subIndex);
       default:
         throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
     }
@@ -127,47 +217,65 @@ public final class BlockInputReader implements InputReader {
   }
 
   /**
-   * See {@link RuntimeIdManager#generateBlockIdWildcard(String, int)} for information on block wildcards.
+   * See {@link RuntimeIdManager#generateBlockIdWildcard(String, int, String)} for information on block wildcards.
    *
    * @param producerTaskIndex to use.
    * @return wildcard block id that corresponds to "ANY" task attempt of the task index.
    */
-  private String generateWildCardBlockId(final int producerTaskIndex) {
+  private String generateWildCardBlockId(final int producerTaskIndex,
+                                         final String subSplitIndex) {
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
       runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
     if (!duplicateDataProperty.isPresent() || duplicateDataProperty.get().getGroupSize() <= 1) {
-      return RuntimeIdManager.generateBlockIdWildcard(runtimeEdge.getId(), producerTaskIndex);
+      return RuntimeIdManager.generateBlockIdWildcard(runtimeEdge.getId(), producerTaskIndex, subSplitIndex);
     }
     final String duplicateEdgeId = duplicateDataProperty.get().getRepresentativeEdgeId();
-    return RuntimeIdManager.generateBlockIdWildcard(duplicateEdgeId, producerTaskIndex);
+    return RuntimeIdManager.generateBlockIdWildcard(duplicateEdgeId, producerTaskIndex, subSplitIndex);
   }
 
   private CompletableFuture<DataUtil.IteratorWithNumBytes> readOneToOne() {
-    final String blockIdWildcard = generateWildCardBlockId(dstTaskIndex);
+    final String blockIdWildcard = generateWildCardBlockId(dstTaskIndex, "*");
     return blockManagerWorker.readBlock(
       blockIdWildcard, runtimeEdge.getId(), runtimeEdge.getExecutionProperties(), HashRange.all());
   }
 
-  private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast(final Predicate<Integer> predicate) {
-    final int numSrcTasks = InputReader.getSourceParallelism(this);
+  /**
+   * Read data in full range of hash value.
+   *
+   * @param predicate function of the index.
+   * @param numSrcIndex not empty only if in MERGE strategy.
+   * @param numSubSplit > 1 only if in MERGE strategy.
+   * @return the list of the completable future of the data.
+   */
+  private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readBroadcast(final Predicate<Integer> predicate,
+                                                                               final Optional<Integer> numSrcIndex,
+                                                                               final int numSubSplit) {
+    final int numSrcTasks = numSrcIndex.orElse(InputReader.getSourceParallelism(this));
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       if (predicate.test(srcTaskIdx)) {
-        final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx);
-        futures.add(blockManagerWorker.readBlock(
-          blockIdWildcard, runtimeEdge.getId(), runtimeEdge.getExecutionProperties(), HashRange.all()));
+        for (int subSplitIdx = 0; subSplitIdx < numSubSplit; subSplitIdx++) {
+          final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx,
+            numSubSplit == 1 ? "*" : Integer.toString(subSplitIdx));
+          futures.add(blockManagerWorker.readBlock(
+            blockIdWildcard, runtimeEdge.getId(), runtimeEdge.getExecutionProperties(), HashRange.all()));
+        }
       }
     }
-
     return futures;
   }
 
   /**
    * Read data in the assigned range of hash value.
    *
+   * @param predicate function of the index.
+   * @param numSrcIndex not empty only if in MERGE strategy.
+   * @param numSubSplit > 1 only if in MERGE strategy.
    * @return the list of the completable future of the data.
    */
-  private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange(final Predicate<Integer> predicate) {
+  private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readDataInRange(final Predicate<Integer> predicate,
+                                                                                 final Optional<Integer> numSrcIndex,
+                                                                                 final int numSubSplit) {
     assert (runtimeEdge instanceof StageEdge);
     final List<KeyRange> keyRangeList = ((StageEdge) runtimeEdge).getKeyRanges();
     final KeyRange hashRangeToRead = keyRangeList.get(dstTaskIndex);
@@ -180,16 +288,96 @@ public final class BlockInputReader implements InputReader {
       - ((HashRange) hashRangeToRead).rangeBeginInclusive();
     metricMessageSender.send("TaskMetric", dstTaskId, "taskSizeRatio",
       SerializationUtils.serialize(partitionerProperty / taskSize));
-    final int numSrcTasks = InputReader.getSourceParallelism(this);
+    final int numSrcTasks = numSrcIndex.orElse(InputReader.getSourceParallelism(this));
     final List<CompletableFuture<DataUtil.IteratorWithNumBytes>> futures = new ArrayList<>();
     for (int srcTaskIdx = 0; srcTaskIdx < numSrcTasks; srcTaskIdx++) {
       if (predicate.test(srcTaskIdx)) {
-        final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx);
-        futures.add(blockManagerWorker.readBlock(
-          blockIdWildcard, runtimeEdge.getId(), runtimeEdge.getExecutionProperties(), hashRangeToRead));
+        for (int subSplitIdx = 0; subSplitIdx < numSubSplit; subSplitIdx++) {
+          final String blockIdWildcard = generateWildCardBlockId(srcTaskIdx,
+            numSubSplit == 1 ? "*" : Integer.toString(subSplitIdx));
+          futures.add(blockManagerWorker.readBlock(
+            blockIdWildcard, runtimeEdge.getId(), runtimeEdge.getExecutionProperties(), hashRangeToRead));
+        }
       }
     }
-
     return futures;
+  }
+
+  // methods related to work stealing policy
+
+  /**
+   * Read blocks in work stealing SPLIT strategy.
+   *
+   * @param startIndex start index (inclusive) to read.
+   * @param endIndex   end index (exclusive) to read.
+   * @return the list of the completable future of the data.
+   */
+  private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readPartial(final int startIndex,
+                                                                             final int endIndex) {
+    final Optional<CommunicationPatternProperty.Value> comValueOptional =
+      runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
+    final CommunicationPatternProperty.Value comValue = comValueOptional.orElseThrow(IllegalStateException::new);
+
+    switch (comValue) {
+      case ONE_TO_ONE:
+        return Collections.singletonList(readOneToOne());
+      case BROADCAST:
+        return readBroadcast(index -> startIndex <= index && index < endIndex, Optional.empty(), 1);
+      case SHUFFLE:
+        return readDataInRange(index -> startIndex <= index && index < endIndex, Optional.empty(), 1);
+      default:
+        throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
+    }
+  }
+
+  /**
+   * Read blocks in work stealing MERGE strategy.
+   *
+   * @param srcParallelism  src stage parallelism.
+   * @param srcNumSubSplit  number of sub-split blocks per src task index.
+   * @return                List of iterators.
+   */
+  private List<CompletableFuture<DataUtil.IteratorWithNumBytes>> readSplitBlocks(final int srcParallelism,
+                                                                                 final int srcNumSubSplit) {
+    final Optional<CommunicationPatternProperty.Value> comValueOptional =
+      runtimeEdge.getPropertyValue(CommunicationPatternProperty.class);
+    final CommunicationPatternProperty.Value comValue = comValueOptional.orElseThrow(IllegalStateException::new);
+
+    switch (comValue) {
+      case ONE_TO_ONE:
+        return Collections.singletonList(readOneToOne());
+      case BROADCAST:
+        return readBroadcast(index -> true, Optional.of(srcParallelism), srcNumSubSplit);
+      case SHUFFLE:
+        return readDataInRange(index -> true, Optional.of(srcParallelism), srcNumSubSplit);
+      default:
+        throw new UnsupportedCommPatternException(new Exception("Communication pattern not supported"));
+    }
+  }
+
+  /**
+   * translate index for consistency.
+   *
+   * @param workStealingState Work stealing startegy.
+   * @param numSubSplit       number of sub-split tasks of the task with given index.
+   * @param index             task index.
+   * @return
+   */
+  private int translateIndex(final String workStealingState,
+                             final int numSubSplit,
+                             final int index) {
+    if (workStealingState.equals(SPLIT_STRATEGY)) {
+      /* SPLIT strategy */
+      int srcParallelism = InputReader.getSourceParallelism(this);
+      return Math.round(srcParallelism / numSubSplit) * RuntimeIdManager.getSubSplitIndexFromTaskId(dstTaskId) + index;
+    } else if (workStealingState.equals(MERGE_STRATEGY)
+      && srcVertex.getPropertyValue(WorkStealingStateProperty.class).orElse(DEFAULT_STRATEGY)
+          .equals(SPLIT_STRATEGY)) {
+      /* MERGE strategy*/
+      int srcNumSubSplit = srcVertex.getPropertyValue(WorkStealingSubSplitProperty.class).orElse(1);
+      return index / srcNumSubSplit;
+    } else {
+      return index;
+    }
   }
 }

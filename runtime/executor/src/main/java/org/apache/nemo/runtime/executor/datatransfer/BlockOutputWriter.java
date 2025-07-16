@@ -73,11 +73,11 @@ public final class BlockOutputWriter implements OutputWriter {
     this.blockManagerWorker = blockManagerWorker;
     this.blockStoreValue = runtimeEdge.getPropertyValue(DataStoreProperty.class)
       .orElseThrow(() -> new RuntimeException("No data store property on the edge"));
-    blockToWrite = blockManagerWorker.createBlock(
+    this.blockToWrite = blockManagerWorker.createBlock(
       RuntimeIdManager.generateBlockId(runtimeEdge.getId(), srcTaskId), blockStoreValue);
     final Optional<DuplicateEdgeGroupPropertyValue> duplicateDataProperty =
       runtimeEdge.getPropertyValue(DuplicateEdgeGroupProperty.class);
-    nonDummyBlock = !duplicateDataProperty.isPresent()
+    this.nonDummyBlock = !duplicateDataProperty.isPresent()
       || duplicateDataProperty.get().getRepresentativeEdgeId().equals(runtimeEdge.getId())
       || duplicateDataProperty.get().getGroupSize() <= 1;
   }

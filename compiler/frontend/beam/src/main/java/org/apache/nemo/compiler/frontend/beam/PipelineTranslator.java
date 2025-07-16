@@ -266,7 +266,8 @@ final class PipelineTranslator {
   private static void groupByKeyTranslator(final PipelineTranslationContext ctx,
                                            final TransformHierarchy.Node beamNode,
                                            final GroupByKey<?, ?> transform) {
-    final IRVertex vertex = new OperatorVertex(createGBKTransform(ctx, beamNode));
+    final String fullName = beamNode.getFullName();
+    final IRVertex vertex = new OperatorVertex(createGBKTransform(ctx, beamNode), fullName);
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
@@ -321,7 +322,8 @@ final class PipelineTranslator {
   private static void flattenTranslator(final PipelineTranslationContext ctx,
                                         final TransformHierarchy.Node beamNode,
                                         final Flatten.PCollections<?> transform) {
-    final IRVertex vertex = new OperatorVertex(new FlattenTransform());
+    final String fullName = beamNode.getFullName();
+    final IRVertex vertex = new OperatorVertex(new FlattenTransform(), fullName);
     ctx.addVertex(vertex);
     beamNode.getInputs().values().forEach(input -> ctx.addEdgeTo(vertex, input));
     beamNode.getOutputs().values().forEach(output -> ctx.registerMainOutputFrom(beamNode, vertex, output));
@@ -347,6 +349,7 @@ final class PipelineTranslator {
     final PTransform<?, ?> transform) {
 
     final Combine.PerKey perKey = (Combine.PerKey) transform;
+    final String fullName = beamNode.getFullName();
 
     // If there's any side inputs, translate each primitive transforms in this composite transform one by one.
     if (!perKey.getSideInputs().isEmpty()) {
@@ -379,8 +382,8 @@ final class PipelineTranslator {
     // Choose between batch processing and stream processing based on window type and boundedness of data
     if (isMainInputBounded(beamNode, ctx.getPipeline()) && isGlobalWindow(beamNode, ctx.getPipeline())) {
       // Batch processing, using CombinePartialTransform and CombineFinalTransform
-      partialCombine = new OperatorVertex(new CombineFnPartialTransform<>(combineFn));
-      finalCombine = new OperatorVertex(new CombineFnFinalTransform<>(combineFn));
+      partialCombine = new OperatorVertex(new CombineFnPartialTransform<>(combineFn), fullName);
+      finalCombine = new OperatorVertex(new CombineFnFinalTransform<>(combineFn), fullName);
     } else {
       // Stream data processing, using GBKTransform
       final AppliedPTransform pTransform = beamNode.toAppliedPTransform(ctx.getPipeline());
